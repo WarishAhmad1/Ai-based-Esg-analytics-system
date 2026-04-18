@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESG Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#f4f7fb;--surface:#fff;--soft:#eef8f5;--text:#213534;--muted:#5f7a75;--accent:#0f766e;--accent2:#14b8a6;--dark:#022c22;--line:rgba(15,118,110,.14);--shadow:0 18px 40px rgba(15,23,42,.08)}
+    *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif}
+    body{background:linear-gradient(180deg,#f4f7fb 0%,#eef8f5 100%);color:#333}
+    .page{width:min(1180px,calc(100% - 32px));margin:0 auto;padding:24px 0 42px}
+    header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:24px}
+    .header-left{display:flex;align-items:center;gap:12px}
+    .menu-toggle{width:44px;height:44px;border-radius:12px;background:#fff;border:1px solid var(--line);color:var(--accent);display:grid;place-items:center;font-size:22px;line-height:1}
+    .brand h1{font-size:28px;color:var(--accent);margin-bottom:8px}
+    .brand p{color:var(--muted);line-height:1.7}
+    .actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .chip{padding:11px 16px;border-radius:999px;background:#fff;border:1px solid var(--line);color:var(--accent)}
+    .btn{padding:11px 16px;border-radius:999px;background:#fff;border:1px solid var(--line);text-decoration:none;color:var(--accent);cursor:pointer;display:inline-flex}
+    .btn,.action{transition:transform .22s ease,box-shadow .22s ease,filter .22s ease}
+    .btn:hover,.action:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 10px 20px rgba(15,118,110,.22);filter:saturate(1.06)}
+    .btn:active,.action:active{transform:translateY(0) scale(.99)}
+    .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:1px solid rgba(255,255,255,.28);box-shadow:0 8px 18px rgba(15,118,110,.2)}
+    .flash-stack{display:grid;gap:12px;margin-bottom:16px}
+    .flash{padding:14px 16px;border-radius:16px;box-shadow:var(--shadow)}
+    .flash.success{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46}
+    .flash.danger{background:#fff1f2;border:1px solid #fecdd3;color:#be123c}
+    .hero{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;margin-bottom:18px}
+    .panel,.card{background:var(--surface);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow)}
+    .panel{padding:28px}
+    .panel h2{font-size:38px;line-height:1.08;color:var(--dark);margin-bottom:14px}
+    .panel p{line-height:1.8;color:var(--muted)}
+    .hero-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:22px}
+    .metric{padding:18px;border-radius:18px;background:var(--soft);border:1px solid rgba(15,118,110,.08)}
+    .metric span{display:block;color:var(--muted);font-size:13px;margin-bottom:6px}
+    .metric strong{font-size:24px;color:var(--accent)}
+    .side-stack{display:grid;gap:18px}
+    .score-card,.alert-card{padding:24px}
+    .score-card{text-align:center}
+    .score-card .label{color:var(--muted)}
+    .score-card strong{display:block;font-size:52px;color:var(--accent);margin:8px 0}
+    .score-card p{color:var(--muted);line-height:1.7}
+    .alert-card h3,.card h3{font-size:20px;color:var(--dark);margin-bottom:12px}
+    .alert-list,.health-list{display:grid;gap:12px}
+    .alert-item,.health-item{padding:14px 16px;border-radius:16px;background:var(--soft);border:1px solid rgba(15,118,110,.08);color:var(--muted);line-height:1.7}
+    .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:18px}
+    .span-4{grid-column:span 4}.span-5{grid-column:span 5}.span-6{grid-column:span 6}.span-7{grid-column:span 7}.span-8{grid-column:span 8}.span-12{grid-column:span 12}
+    .card{padding:24px}
+    .sub{color:var(--muted);line-height:1.75;margin-bottom:14px}
+    .score-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+    .score-box{padding:18px;border-radius:18px;background:var(--soft);border:1px solid rgba(15,118,110,.08)}
+    .score-box span{display:block;color:var(--muted);font-size:13px;margin-bottom:6px}
+    .score-box strong{font-size:28px;color:var(--accent)}
+    .form-grid{display:grid;gap:12px}
+    .row-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .row-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    input{width:100%;padding:13px 14px;border-radius:14px;border:1px solid rgba(15,118,110,.16);background:#fff;color:var(--text);outline:none;font:inherit}
+    input:focus{border-color:rgba(15,118,110,.42);box-shadow:0 0 0 3px rgba(15,118,110,.08)}
+    button{border:none;cursor:pointer;font:inherit}
+    .action{padding:13px 18px;border-radius:16px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:600}
+    .result{margin-top:10px;color:var(--accent);font-weight:600;min-height:24px}
+    .upload{padding:18px;border:2px dashed rgba(15,118,110,.18);border-radius:18px;text-align:center;background:var(--soft);cursor:pointer}
+    .pill-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+    .pill{padding:9px 12px;border-radius:999px;background:var(--soft);border:1px solid rgba(15,118,110,.08);color:var(--accent);font-size:13px}
+    .health-item{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
+    .health-item strong{display:block;color:var(--dark);margin-bottom:6px}
+    .badge-good,.badge-watch{padding:7px 11px;border-radius:999px;font-size:13px;font-weight:600;white-space:nowrap}
+    .badge-good{background:rgba(16,185,129,.14);color:#047857}
+    .badge-watch{background:rgba(249,115,22,.12);color:#c2410c}
+    canvas{max-height:280px}
+    .side-menu-overlay{position:fixed;inset:0;background:rgba(2,44,34,.36);opacity:0;pointer-events:none;transition:.25s ease;z-index:45}
+    .side-menu-overlay.show{opacity:1;pointer-events:auto}
+    .side-menu{position:fixed;left:0;top:0;height:100vh;width:min(320px,90vw);background:#fff;border-right:1px solid var(--line);box-shadow:var(--shadow);transform:translateX(-105%);transition:.25s ease;z-index:46;display:flex;flex-direction:column}
+    .side-menu.show{transform:translateX(0)}
+    .menu-head{padding:18px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+    .menu-title{font-size:18px;font-weight:700;color:var(--accent)}
+    .menu-close{width:36px;height:36px;border-radius:10px;background:#f0fdfa;color:var(--accent);border:1px solid var(--line)}
+    .menu-links{display:grid;gap:10px;padding:16px}
+    .menu-link{display:block;padding:12px 14px;border-radius:12px;background:#f8fffd;border:1px solid var(--line);color:var(--dark);font-weight:500;text-decoration:none}
+    .menu-footer{margin-top:auto;padding:16px;border-top:1px solid var(--line)}
+    .menu-profile{display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;background:#eef8f5;border:1px solid var(--line)}
+    .profile-icon{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:#d8faf3;color:var(--accent);font-weight:700}
+    .profile-name{font-weight:600;color:var(--dark)}
+    .profile-sub{font-size:12px;color:var(--muted)}
+    @media (max-width:1050px){.hero,.row-3,.row-2,.score-grid{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.span-4,.span-5,.span-6,.span-7,.span-8,.span-12{grid-column:span 1}.hero-metrics{grid-template-columns:1fr}}
+    .top-card{margin-bottom:18px}
+    .top-card .pill-row{gap:12px}
+    .advanced-link{display:inline-flex;flex-direction:column;align-items:flex-start;gap:6px;padding:14px 18px 16px;min-width:220px;border-radius:16px;line-height:1.2;text-align:left;border:2px solid rgba(255,255,255,.24);position:relative}
+    .advanced-link::after{content:'Open ->';font-size:11px;font-weight:700;letter-spacing:.2px;margin-top:2px;opacity:.95}
+    .advanced-link:hover{box-shadow:0 12px 22px rgba(15,118,110,.28)}
+    .advanced-cat{font-size:11px;font-weight:600;letter-spacing:.35px;text-transform:uppercase;opacity:.86}
+    .advanced-label{font-size:17px;font-weight:700}
+    .advanced-desc{font-size:12px;line-height:1.35;opacity:.95;max-width:260px}
+    .advanced-cta{font-size:11px;font-weight:600;opacity:.92}
+    .dash-footer{margin-top:24px;padding:18px 20px;border-radius:18px;background:#fff;border:1px solid var(--line);color:var(--muted);text-align:center}
+    @media (max-width:720px){header{flex-direction:column;align-items:stretch}}
+  </style>
+</head>
+<body>
+  <div class="side-menu-overlay" id="menuOverlay"></div>
+  <aside class="side-menu" id="sideMenu">
+    <div class="menu-head">
+      <div class="menu-title">Menu</div>
+      <button class="menu-close" type="button" id="menuClose">&times;</button>
+    </div>
+    <div class="menu-links">
+      <a class="menu-link" href="{{ url_for('home') }}">Home</a>
+      <a class="menu-link" href="{{ url_for('about_page') }}">About Us</a>
+      <a class="menu-link" href="{{ url_for('features_page') }}">Features</a>
+      <a class="menu-link" href="{{ url_for('contact_page') }}">Contact</a>
+      <a class="menu-link" href="{{ url_for('logout') }}">Logout</a>
+    </div>
+    <div class="menu-footer">
+      <div class="menu-profile">
+        <div class="profile-icon">U</div>
+        <div>
+          <div class="profile-name">{{ user.username }}</div>
+          <div class="profile-sub">Dashboard User</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="page">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-stack">
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <header>
+      <div class="header-left">
+        <button class="menu-toggle" id="menuToggle" type="button" aria-label="Open menu">☰</button>
+        <div class="brand">
+          <h1>ESG Dashboard</h1>
+          <p>Welcome back{% if user.company %}, {{ user.username }} from {{ user.company }}{% else %}, {{ user.username }}{% endif %}. Your ESG workspace is ready.</p>
+        </div>
+      </div>
+      <div class="actions">
+        <span class="chip">{{ user.username }}</span>
+      </div>
+    </header>
+
+    <div class="card top-card">
+      <h3>Open Advanced Dashboards</h3>
+      <p class="sub">Launch the detailed ESG analytics views directly from this main dashboard.</p>
+      <div class="pill-row">
+        {% for item in analytics_dashboards %}
+          {% set key = item.key | lower %}
+          {% if 'risk' in key or 'alert' in key %}
+            {% set dashboard_category = 'Risk Module' %}
+            {% set dashboard_desc = 'Track compliance risks, incident triggers, and high-priority ESG alerts in one focused view.' %}
+          {% elif 'trend' in key or 'time' in key %}
+            {% set dashboard_category = 'Insights Module' %}
+            {% set dashboard_desc = 'Review month-wise and year-wise ESG movement to understand direction and long-term momentum.' %}
+          {% elif 'env' in key %}
+            {% set dashboard_category = 'E Pillar' %}
+            {% set dashboard_desc = 'Analyze emissions, energy, waste, and sustainability metrics to improve environmental performance.' %}
+          {% elif 'soc' in key %}
+            {% set dashboard_category = 'S Pillar' %}
+            {% set dashboard_desc = 'Monitor workforce, community impact, safety, and supplier social indicators for better decisions.' %}
+          {% elif 'gov' in key %}
+            {% set dashboard_category = 'G Pillar' %}
+            {% set dashboard_desc = 'Evaluate policy quality, board oversight, ethics controls, and governance maturity signals.' %}
+          {% else %}
+            {% set dashboard_category = 'Core ESG' %}
+            {% set dashboard_desc = 'Open an overall ESG summary with combined scores, key highlights, and actionable insights.' %}
+          {% endif %}
+          <a class="btn btn-primary advanced-link" href="{{ url_for('open_analytics_dashboard', dashboard_key=item.key) }}" target="_blank" rel="noopener" title="{{ dashboard_desc }}">
+            <span class="advanced-cat">{{ dashboard_category }}</span>
+            <span class="advanced-label">{{ item.label }}</span>
+            <span class="advanced-desc">{{ dashboard_desc }}</span>
+            <span class="advanced-cta">Click to open dashboard</span>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+    <section class="hero">
+      <div class="panel">
+        <h2>Track ESG health with a clearer and more professional dashboard.</h2>
+        <p>Use the calculator, comparison tools, and upload section below to analyze ESG performance with simpler visuals.</p>
+        <div class="hero-metrics">
+          <div class="metric"><span>Environment</span><strong>{{ esg_snapshot.environment }}</strong></div>
+          <div class="metric"><span>Social</span><strong>{{ esg_snapshot.social }}</strong></div>
+          <div class="metric"><span>Governance</span><strong>{{ esg_snapshot.governance }}</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card span-12">
+        <h3>Calculate ESG Score</h3>
+        <p class="sub">Enter values between 0 and 100 to generate an updated score and rating.</p>
+        <div class="form-grid">
+          <div class="row-3">
+            <input id="env" type="number" min="0" max="100" placeholder="Environmental score">
+            <input id="soc" type="number" min="0" max="100" placeholder="Social score">
+            <input id="gov" type="number" min="0" max="100" placeholder="Governance score">
+          </div>
+          <button class="action" type="button" onclick="calculate()">Calculate</button>
+        </div>
+        <div class="result" id="output"></div>
+      </div>
+
+
+      <div class="card span-5">
+        <h3>Compare Companies</h3>
+        <p class="sub">Compare two ESG scores quickly to see which one is ahead.</p>
+        <div class="form-grid">
+          <div class="row-2">
+            <input id="c1" type="number" min="0" max="100" placeholder="Company A score">
+            <input id="c2" type="number" min="0" max="100" placeholder="Company B score">
+          </div>
+          <button class="action" type="button" onclick="compare()">Compare</button>
+        </div>
+        <div class="result" id="compareResult"></div>
+      </div>
+
+      <div class="card span-7">
+        <h3>Upload ESG Data</h3>
+        <p class="sub">Upload a CSV or spreadsheet file to keep the dashboard workflow complete.</p>
+        <label class="upload" for="fileInput">Click here to choose a CSV or spreadsheet file</label>
+        <input id="fileInput" type="file" hidden>
+        <div class="pill-row" id="fileMeta"></div>
+        <button class="action" style="margin-top:14px;" type="button" onclick="uploadFile()">Process File</button>
+        <div class="result" id="fileResult"></div>
+      </div>
+      <div class="card span-12">
+        <h3>ESG Health Notes</h3>
+        <p class="sub">A quick summary of where the current ESG profile is strongest and where more attention is needed.</p>
+        <div class="health-list">
+          <div class="health-item"><div><strong>Environmental readiness</strong><div>Current data shows a positive emissions and sustainability trend.</div></div><span class="badge-good">Healthy</span></div>
+          <div class="health-item"><div><strong>Social resilience</strong><div>Supplier and social indicators should be watched more carefully.</div></div><span class="badge-watch">Watch</span></div>
+          <div class="health-item"><div><strong>Governance maturity</strong><div>Oversight strength remains one of the best current signals.</div></div><span class="badge-good">Strong</span></div>
+        </div>
+      </div>
+    </section>
+    <footer class="dash-footer">© 2026 AI ESG Analytics | Logged in as {{ user.username }}</footer>
+  </div>
+
+  <script>
+    const menuToggle=document.getElementById('menuToggle');
+    const menuClose=document.getElementById('menuClose');
+    const sideMenu=document.getElementById('sideMenu');
+    const menuOverlay=document.getElementById('menuOverlay');
+    function openMenu(){sideMenu.classList.add('show');menuOverlay.classList.add('show');document.body.style.overflow='hidden';}
+    function closeMenu(){sideMenu.classList.remove('show');menuOverlay.classList.remove('show');document.body.style.overflow='';}
+    menuToggle.addEventListener('click',openMenu);
+    menuClose.addEventListener('click',closeMenu);
+    menuOverlay.addEventListener('click',closeMenu);
+    document.querySelectorAll('.menu-link').forEach((link)=>link.addEventListener('click',closeMenu));
+    document.addEventListener('keydown',(event)=>{if(event.key==='Escape'){closeMenu();}});
+    const envInput=document.getElementById('env');
+    const socInput=document.getElementById('soc');
+    const govInput=document.getElementById('gov');
+    const output=document.getElementById('output');
+    const compareResult=document.getElementById('compareResult');
+    const fileInput=document.getElementById('fileInput');
+    const fileMeta=document.getElementById('fileMeta');
+    const fileResult=document.getElementById('fileResult');
+
+    function isValidScore(value){return Number.isFinite(value)&&value>=0&&value<=100}
+    function lowestArea(scores){
+      return [['environmental',scores[0]],['social',scores[1]],['governance',scores[2]]].sort((a,b)=>a[1]-b[1])[0][0];
+    }
+    function calculate(){
+      const e=Number(envInput.value),s=Number(socInput.value),g=Number(govInput.value);
+      if(!isValidScore(e)||!isValidScore(s)||!isValidScore(g)){output.innerText='Enter valid values between 0 and 100 for all three categories.';return}
+      const avg=(e+s+g)/3;
+      const rating=avg>=80?'Excellent':avg>=65?'Good':avg>=50?'Moderate':'Needs attention';
+      const focus=lowestArea([e,s,g]);
+      output.innerText=`${rating} rating generated. Overall score: ${avg.toFixed(1)}. Lowest current signal: ${focus}.`;
+    }
+    function compare(){
+      const a=Number(document.getElementById('c1').value),b=Number(document.getElementById('c2').value);
+      if(!isValidScore(a)||!isValidScore(b)){compareResult.innerText='Enter valid overall scores between 0 and 100 for both companies.';return}
+      if(a>b) compareResult.innerText=`Company A leads by ${(a-b).toFixed(1)} points.`;
+      else if(b>a) compareResult.innerText=`Company B leads by ${(b-a).toFixed(1)} points.`;
+      else compareResult.innerText='Both companies are currently tied.';
+    }
+    fileInput.addEventListener('change',()=>{
+      fileMeta.innerHTML='';
+      const file=fileInput.files[0];
+      if(!file) return;
+      const meta=[`File: ${file.name}`,`Size: ${(file.size/1024).toFixed(1)} KB`,`Type: ${file.type || 'Unknown'}`];
+      meta.forEach((value)=>{const chip=document.createElement('span');chip.className='pill';chip.innerText=value;fileMeta.appendChild(chip);});
+    });
+    function uploadFile(){
+      const file=fileInput.files[0];
+      if(!file){fileResult.innerText='Please choose a file before processing.';return}
+      fileResult.innerText=`${file.name} is ready for ESG data processing.`;
+    }
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

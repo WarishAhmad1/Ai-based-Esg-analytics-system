@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI ESG Analytics System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#f4f7fb;--surface:#fff;--soft:#eef8f5;--text:#213534;--muted:#5f7a75;--accent:#0f766e;--accent2:#14b8a6;--dark:#022c22;--line:rgba(15,118,110,.14);--shadow:0 18px 40px rgba(15,23,42,.08)}
+    *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif}
+    body{background:linear-gradient(180deg,#f4f7fb 0%,#eef8f5 100%);color:#333}
+    a{text-decoration:none;color:inherit}
+    .container{width:min(1180px,calc(100% - 32px));margin:0 auto}
+    header{display:flex;justify-content:space-between;align-items:center;padding:22px 0;gap:16px}
+    .header-left{display:flex;align-items:center;gap:12px}
+    .menu-toggle{width:44px;height:44px;border-radius:12px;background:#fff;border:1px solid var(--line);color:var(--accent);display:grid;place-items:center;font-size:22px;line-height:1}
+    .brand{display:flex;align-items:center;gap:14px}
+    .brand-badge{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:#d8faf3;color:var(--accent);font-weight:700;border:1px solid var(--line)}
+    .brand-title{font-size:22px;font-weight:700;color:var(--accent)}
+    .brand-sub{font-size:13px;color:var(--muted)}
+    .nav-links,.nav-actions{display:flex;align-items:center;gap:14px}
+    .nav-links a{color:var(--muted)}
+    .btn,button{border:none;cursor:pointer;font:inherit;transition:.2s ease}
+    .btn:hover,button:hover{transform:translateY(-1px)}
+    .btn-ghost{padding:11px 18px;border-radius:999px;background:#fff;color:var(--accent);border:1px solid var(--line)}
+    .btn-primary{padding:11px 20px;border-radius:999px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:600}
+    .user-chip{padding:11px 16px;border-radius:999px;background:#fff;border:1px solid var(--line);color:var(--accent)}
+    .side-menu-overlay{position:fixed;inset:0;background:rgba(2,44,34,.36);opacity:0;pointer-events:none;transition:.25s ease;z-index:45}
+    .side-menu-overlay.show{opacity:1;pointer-events:auto}
+    .side-menu{position:fixed;left:0;top:0;height:100vh;width:min(320px,90vw);background:#fff;border-right:1px solid var(--line);box-shadow:var(--shadow);transform:translateX(-105%);transition:.25s ease;z-index:46;display:flex;flex-direction:column}
+    .side-menu.show{transform:translateX(0)}
+    .menu-head{padding:18px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+    .menu-title{font-size:18px;font-weight:700;color:var(--accent)}
+    .menu-close{width:36px;height:36px;border-radius:10px;background:#f0fdfa;color:var(--accent);border:1px solid var(--line)}
+    .menu-links{display:grid;gap:10px;padding:16px}
+    .menu-link{display:block;padding:12px 14px;border-radius:12px;background:#f8fffd;border:1px solid var(--line);color:var(--dark);font-weight:500}
+    .menu-actions{display:grid;gap:10px;padding:0 16px 16px}
+    .menu-footer{margin-top:auto;padding:16px;border-top:1px solid var(--line)}
+    .menu-profile{display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;background:#eef8f5;border:1px solid var(--line)}
+    .profile-icon{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:#d8faf3;color:var(--accent);font-weight:700}
+    .profile-name{font-weight:600;color:var(--dark)}
+    .profile-sub{font-size:12px;color:var(--muted)}
+    .hero{display:grid;grid-template-columns:1fr;gap:24px;align-items:center;padding:40px 0 24px}.hero-content{max-width:100%}.hero-showcase{padding:0 0 26px}.hero-fill{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:14px}.hero-fill-item{padding:14px 16px;border-radius:16px;background:#fff;border:1px solid var(--line);color:var(--muted)}.hero-fill-item strong{display:block;color:var(--dark);margin-bottom:6px}
+    .eyebrow{display:inline-flex;padding:9px 14px;border-radius:999px;background:rgba(15,118,110,.08);border:1px solid var(--line);color:var(--accent);font-size:14px;margin-bottom:18px}
+    .hero h1{font-size:clamp(2.5rem,5vw,4.1rem);line-height:1.08;color:var(--dark);margin-bottom:18px}
+    .hero p{font-size:17px;line-height:1.8;color:var(--muted);max-width:620px;margin-bottom:24px}
+    .hero-actions{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:24px}
+    .hero-points{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+    .hero-point,.card,.insight-item{background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow)}
+    .hero-point{padding:18px;border-radius:18px}
+    .hero-point strong{display:block;font-size:22px;color:var(--accent);margin-bottom:6px}
+    .hero-visual{background:linear-gradient(135deg,#0f766e,#14b8a6);border-radius:28px;padding:28px;color:#fff;display:grid;grid-template-columns:1.2fr .8fr;gap:18px}
+    .visual-card,.metric-card{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);border-radius:22px}
+    .visual-card{padding:24px}
+    .visual-card .label,.metric-card span{color:#dcfaf4;font-size:13px}
+    .visual-score{font-size:52px;font-weight:700;margin:12px 0}
+    .visual-copy{line-height:1.8}
+    .bars{display:flex;align-items:end;gap:12px;min-height:180px;margin-top:22px}
+    .bars span{flex:1;background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(220,250,244,.38));border-radius:16px 16px 8px 8px}
+    .bars span:nth-child(1){height:55%}.bars span:nth-child(2){height:78%}.bars span:nth-child(3){height:62%}.bars span:nth-child(4){height:88%}
+    .metric-stack{display:grid;gap:14px}
+    .metric-card{padding:18px}
+    .metric-card strong{font-size:22px}
+    .section{padding:34px 0 70px}
+    .section-head{text-align:center;max-width:760px;margin:0 auto 34px}
+    .section-head h2{font-size:34px;color:var(--accent);margin-bottom:10px}
+    .section-head p{line-height:1.8;color:var(--muted)}
+    .stats-grid,.feature-grid,.workflow-grid,.insight-grid{display:grid;gap:18px}
+    .stats-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .feature-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .workflow-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .insight-grid{grid-template-columns:1.1fr .9fr}
+    .card{padding:24px;border-radius:22px}
+    .card h3{font-size:20px;color:var(--dark);margin-bottom:10px}
+    .card p{line-height:1.75;color:var(--muted)}
+    .stat-value{font-size:32px;font-weight:700;color:var(--accent);margin:10px 0 6px}
+    .feature-icon,.step-number{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:rgba(15,118,110,.10);color:var(--accent);font-weight:700;margin-bottom:16px}
+    .step-number{width:38px;height:38px;border-radius:50%}
+    .insight-list{display:grid;gap:14px;margin-top:18px}
+    .insight-item{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;padding:16px;border-radius:18px;background:var(--soft)}
+    .insight-item strong{display:block;color:var(--dark);margin-bottom:6px}
+    .badge-good,.badge-watch{padding:7px 11px;border-radius:999px;font-size:13px;font-weight:600;white-space:nowrap}
+    .badge-good{background:rgba(16,185,129,.14);color:#047857}
+    .badge-watch{background:rgba(249,115,22,.12);color:#c2410c}
+    .cta{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:28px;border-radius:28px;background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff}
+    .cta h3{font-size:30px;margin-bottom:10px}
+    .cta p{max-width:640px;line-height:1.8;color:#e6fffb}
+    footer{padding:34px 0 44px;text-align:center;color:var(--muted)}
+    .flash-stack{position:fixed;top:18px;right:18px;display:grid;gap:12px;z-index:30;width:min(360px,calc(100% - 24px))}
+    .flash{padding:14px 16px;border-radius:16px;box-shadow:var(--shadow)}
+    .flash.success{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46}
+    .flash.danger{background:#fff1f2;border:1px solid #fecdd3;color:#be123c}
+    .modal{position:fixed;inset:0;display:none;justify-content:center;align-items:center;padding:18px;background:rgba(0,0,0,.46);backdrop-filter:blur(6px);z-index:40}
+    .modal.show{display:flex}
+    .modal-box{width:min(460px,100%);background:#fff;border-radius:22px;padding:28px;border:1px solid var(--line);box-shadow:0 26px 70px rgba(0,0,0,.18)}
+    .modal-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:20px}
+    .modal-top h3{color:var(--accent);font-size:28px;margin-bottom:8px}
+    .modal-top p{color:var(--muted);line-height:1.7}
+    .close-btn{width:40px;height:40px;border-radius:12px;background:#f0fdfa;color:var(--accent);border:1px solid var(--line)}
+    .form-grid{display:grid;gap:14px}
+    .field label{display:block;margin-bottom:8px;font-size:14px;color:#134e4a}
+    .field input{width:100%;padding:13px 46px 13px 14px;border-radius:14px;border:1px solid rgba(15,118,110,.16);background:#fff;color:var(--text);outline:none;font:inherit}
+    .field input:focus{border-color:rgba(15,118,110,.42);box-shadow:0 0 0 3px rgba(15,118,110,.08)}
+    .password-wrap{position:relative}
+    .toggle-password{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;color:var(--accent);font-size:13px;font-weight:600;padding:4px 6px}
+    .helper{font-size:13px;color:var(--muted);line-height:1.6}
+    .submit{width:100%;padding:13px 18px;border-radius:16px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:600}
+    .modal-links{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px}
+    .text-link{background:none;color:var(--accent);padding:0}
+    @media (max-width:980px){header,.cta{flex-direction:column;align-items:stretch}.hero,.hero-visual,.insight-grid{grid-template-columns:1fr}.stats-grid,.feature-grid,.workflow-grid,.hero-points,.hero-fill{grid-template-columns:repeat(2,minmax(0,1fr))}.nav-links{display:none}}
+    @media (max-width:720px){.nav-links{display:none}.nav-actions{width:100%;justify-content:flex-end;flex-wrap:wrap}.stats-grid,.feature-grid,.workflow-grid,.hero-points,.hero-fill{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-stack">
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <div class="side-menu-overlay" id="menuOverlay"></div>
+  <aside class="side-menu" id="sideMenu">
+    <div class="menu-head">
+      <div class="menu-title">Menu</div>
+      <button class="menu-close" type="button" id="menuClose">&times;</button>
+    </div>
+    <div class="menu-links">
+      <a class="menu-link" href="{{ url_for('home') }}">Home</a>
+      <a class="menu-link" href="{{ url_for('about_page') }}">About Us</a>
+      <a class="menu-link" href="{{ url_for('features_page') }}">Features</a>
+      <a class="menu-link" href="{{ url_for('contact_page') }}">Contact</a>
+    </div>
+    <div class="menu-actions">
+      {% if user %}
+        <a class="btn btn-primary" href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a class="btn btn-ghost" href="{{ url_for('logout') }}">Logout</a>
+      {% else %}
+        <button class="btn btn-ghost" type="button" data-open-modal="login">Login</button>
+        <button class="btn btn-primary" type="button" data-open-modal="register">Sign Up</button>
+      {% endif %}
+    </div>
+    <div class="menu-footer">
+      <div class="menu-profile">
+        <div class="profile-icon">U</div>
+        <div>
+          <div class="profile-name">{% if user %}{{ user.username }}{% else %}Guest User{% endif %}</div>
+          <div class="profile-sub">Profile</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="container" id="home">
+    <header>
+      <div class="header-left">
+        <button class="menu-toggle" id="menuToggle" type="button" aria-label="Open menu">☰</button>
+        <div class="brand">
+          <div class="brand-badge">ESG</div>
+          <div>
+            <div class="brand-title">AI ESG Analytics</div>
+            <div class="brand-sub">Environmental, Social and Governance Intelligence Platform</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#workflow">Workflow</a>
+        <a href="#insights">Insights</a>
+      </div>
+
+      <div class="nav-actions">
+        {% if user %}
+          <a class="user-chip" href="{{ url_for('dashboard') }}">{{ user.username }}</a>
+          <a class="btn btn-ghost" href="{{ url_for('logout') }}">Logout</a>
+        {% else %}
+          <button class="btn btn-ghost" type="button" data-open-modal="login">Login</button>
+          <button class="btn btn-primary" type="button" data-open-modal="register">Sign Up</button>
+        {% endif %}
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="hero-content">
+        <div class="eyebrow">AI-powered sustainability monitoring and risk analytics</div>
+        <h1>Understand ESG performance with a cleaner and smarter platform.</h1>
+        <p>Analyze sustainability indicators, compare performance, review risk trends, and move from raw data to clear ESG decisions from one place.</p>
+        <div class="hero-actions">
+          {% if user %}
+            <a class="btn btn-primary" href="{{ url_for('dashboard') }}">Open Dashboard</a>
+          {% else %}
+            <button class="btn btn-primary" type="button" data-open-modal="register">Create Account</button>
+            <button class="btn btn-ghost" type="button" data-open-modal="login">Login</button>
+          {% endif %}
+        </div>
+        <div class="hero-points">
+          <div class="hero-point"><strong>{{ platform_stats.companies }}+</strong>Companies analyzed</div>
+          <div class="hero-point"><strong>{{ platform_stats.accuracy }}%</strong>Detection accuracy</div>
+          <div class="hero-point"><strong>{{ platform_stats.reports }}+</strong>Reports generated</div>
+        </div>
+        <div class="hero-fill">
+          <div class="hero-fill-item"><strong>Live ESG Signals</strong>Real-time risk and trend cues from current indicators.</div>
+          <div class="hero-fill-item"><strong>Actionable Priorities</strong>Focused suggestions so teams know what to improve first.</div>
+          <div class="hero-fill-item"><strong>Reporting Ready</strong>Cleaner summaries for presentations and stakeholder updates.</div>
+        </div>
+      </div>
+
+    </section>
+
+    <section class="hero-showcase">
+      <div class="hero-visual">
+        <div class="visual-card">
+          <div class="label">Overall ESG outlook</div>
+          <div class="visual-score">81.4</div>
+          <div class="visual-copy">Governance remains strong while environmental and social indicators continue improving through better review and reporting.</div>
+          <div class="bars"><span></span><span></span><span></span><span></span></div>
+        </div>
+        <div class="metric-stack">
+          <div class="metric-card"><span>Carbon performance</span><strong>+12%</strong></div>
+          <div class="metric-card"><span>Supply chain review</span><strong>04 open</strong></div>
+          <div class="metric-card"><span>Governance score</span><strong>88 / 100</strong></div>
+          <div class="metric-card"><span>Board oversight</span><strong>Monthly</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="stats-grid">
+        <div class="card"><div class="brand-sub">Companies analyzed</div><div class="stat-value">{{ platform_stats.companies }}+</div><p>Coverage across finance, manufacturing, energy, and retail sectors.</p></div>
+        <div class="card"><div class="brand-sub">Risk detection accuracy</div><div class="stat-value">{{ platform_stats.accuracy }}%</div><p>Early warning support for analysts and student projects.</p></div>
+        <div class="card"><div class="brand-sub">Reports generated</div><div class="stat-value">{{ platform_stats.reports }}+</div><p>Readable summaries with score breakdowns and useful insight.</p></div>
+        <div class="card"><div class="brand-sub">Active watchlists</div><div class="stat-value">{{ platform_stats.watchlists }}</div><p>Ongoing monitoring for important ESG signals and changes.</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="features">
+      <div class="section-head">
+        <h2>Platform Features</h2>
+        <p>A focused feature set designed to make ESG analysis easy to understand and easier to present.</p>
+      </div>
+      <div class="feature-grid">
+        <div class="card"><div class="feature-icon">E</div><h3>Environmental Monitoring</h3><p>Track emissions, sustainability indicators, and environmental performance in one place.</p></div>
+        <div class="card"><div class="feature-icon">S</div><h3>Social Analysis</h3><p>Review labor, welfare, supplier checks, and social responsibility indicators clearly.</p></div>
+        <div class="card"><div class="feature-icon">G</div><h3>Governance Evaluation</h3><p>Assess transparency, oversight, and governance quality using simple dashboards.</p></div>
+        <div class="card"><div class="feature-icon">AI</div><h3>AI Risk Detection</h3><p>Highlight ESG issues earlier with easy-to-read signals and category trends.</p></div>
+        <div class="card"><div class="feature-icon">EX</div><h3>Explainable Insights</h3><p>Understand why a score is strong, moderate, or weak without confusing outputs.</p></div>
+        <div class="card"><div class="feature-icon">DB</div><h3>Secure User Access</h3><p>Register, log in, and reset passwords through real database-backed authentication.</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="workflow">
+      <div class="section-head">
+        <h2>System Workflow</h2>
+        <p>The platform keeps the journey straightforward, from registration to ESG review and dashboard analysis.</p>
+      </div>
+      <div class="workflow-grid">
+        <div class="card"><div class="step-number">1</div><h3>User Login / Register</h3><p>Create an account and sign in to your ESG workspace securely.</p></div>
+        <div class="card"><div class="step-number">2</div><h3>Upload or Enter Data</h3><p>Use the dashboard to enter values or add a file for ESG review.</p></div>
+        <div class="card"><div class="step-number">3</div><h3>AI ESG Analysis</h3><p>Generate a clearer picture of environmental, social, and governance health.</p></div>
+        <div class="card"><div class="step-number">4</div><h3>Dashboard Decisions</h3><p>See trends, focus areas, and outputs that help you explain results.</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="insights">
+      <div class="insight-grid">
+        <div class="card">
+          <h3>Current Monitoring Priorities</h3>
+          <p>The platform highlights which signals look healthy and which ones should be reviewed more closely.</p>
+          <div class="insight-list">
+            <div class="insight-item"><div><strong>Emissions trend</strong>Environmental movement remains positive and should stay visible on the dashboard.</div><span class="badge-good">Healthy</span></div>
+            <div class="insight-item"><div><strong>Supplier labor checks</strong>Pending confirmations may affect social confidence if unresolved.</div><span class="badge-watch">Watch</span></div>
+            <div class="insight-item"><div><strong>Board oversight</strong>Governance cadence continues to support stronger disclosure discipline.</div><span class="badge-good">Strong</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Account Experience</h3>
+          <p>The homepage now uses real forms connected to Flask so the auth flow is consistent and usable.</p>
+          <div class="insight-list">
+            <div class="insight-item"><div><strong>Working login</strong>Users can log in with credentials saved in the database.</div></div>
+            <div class="insight-item"><div><strong>Forgot password support</strong>Passwords can be reset directly from the homepage.</div></div>
+            <div class="insight-item"><div><strong>Password visibility</strong>Show and hide buttons make password entry easier in every auth modal.</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <section class="section">
+      <div class="cta">
+        <div>
+          <h3>Ready to explore your ESG dashboard?</h3>
+          <p>Create an account to start using the ESG calculator, chart tools, comparison features, and the improved dashboard flow.</p>
+        </div>
+        {% if user %}
+          <a class="btn btn-primary" href="{{ url_for('dashboard') }}">Go To Dashboard</a>
+        {% else %}
+          <button class="btn btn-primary" type="button" data-open-modal="register">Start Now</button>
+        {% endif %}
+      </div>
+    </section>
+
+    <footer>
+      <div class="card" style="border-radius:22px;display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;align-items:flex-start;">
+        <div>
+          <div class="brand-title">AI ESG Analytics</div>
+          <div class="brand-sub">Smarter Environmental, Social and Governance intelligence.</div>
+        </div>
+        <div style="color:var(--muted);">© 2026 AI-Based ESG Risk Analytics System</div>
+      </div>
+    </footer>
+  </div>
+
+  <div class="modal" id="loginModal">
+    <div class="modal-box">
+      <div class="modal-top">
+        <div><h3>Login</h3><p>Continue to your ESG dashboard and tools.</p></div>
+        <button class="close-btn" type="button" data-close-modal>&times;</button>
+      </div>
+      <form class="form-grid" method="post" action="{{ url_for('login') }}">
+        <div class="field"><label for="loginEmail">Email</label><input id="loginEmail" name="email" type="email" placeholder="you@example.com" required></div>
+        <div class="field"><label for="loginPassword">Password</label><div class="password-wrap"><input id="loginPassword" name="password" type="password" placeholder="Enter your password" required><button class="toggle-password" type="button" data-toggle-password="loginPassword">Show</button></div></div>
+        <button class="submit" type="submit">Login</button>
+      </form>
+      <div class="modal-links">
+        <button class="text-link" type="button" data-open-modal="forgot">Forgot password?</button>
+        <button class="text-link" type="button" data-open-modal="register">Create account</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="registerModal">
+    <div class="modal-box">
+      <div class="modal-top">
+        <div><h3>Register</h3><p>Create your account and then log in right away.</p></div>
+        <button class="close-btn" type="button" data-close-modal>&times;</button>
+      </div>
+      <form class="form-grid" method="post" action="{{ url_for('register') }}">
+        <div class="field"><label for="regName">Full name or username</label><input id="regName" name="username" type="text" placeholder="Arif Siddiqui" required></div>
+        <div class="field"><label for="regCompany">Company / organization</label><input id="regCompany" name="company" type="text" placeholder="Your organization"></div>
+        <div class="field"><label for="regEmail">Email</label><input id="regEmail" name="email" type="email" placeholder="team@company.com" required></div>
+        <div class="field"><label for="regPass">Password</label><div class="password-wrap"><input id="regPass" name="password" type="password" placeholder="Create password" required><button class="toggle-password" type="button" data-toggle-password="regPass">Show</button></div></div>
+        <div class="field"><label for="regConfirm">Confirm password</label><div class="password-wrap"><input id="regConfirm" name="confirm_password" type="password" placeholder="Re-enter password" required><button class="toggle-password" type="button" data-toggle-password="regConfirm">Show</button></div></div>
+        <div class="helper">Use at least 6 characters for your password.</div>
+        <button class="submit" type="submit">Register</button>
+      </form>
+      <div class="modal-links">
+        <button class="text-link" type="button" data-open-modal="login">Already have an account?</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="forgotModal">
+    <div class="modal-box">
+      <div class="modal-top">
+        <div><h3>Forgot Password</h3><p>Reset your password and then log in with the new one.</p></div>
+        <button class="close-btn" type="button" data-close-modal>&times;</button>
+      </div>
+      <form class="form-grid" method="post" action="{{ url_for('forgot_password') }}">
+        <div class="field"><label for="forgotEmail">Registered email</label><input id="forgotEmail" name="email" type="email" placeholder="you@example.com" required></div>
+        <div class="field"><label for="forgotPassword">New password</label><div class="password-wrap"><input id="forgotPassword" name="new_password" type="password" placeholder="New password" required><button class="toggle-password" type="button" data-toggle-password="forgotPassword">Show</button></div></div>
+        <div class="field"><label for="forgotConfirm">Confirm new password</label><div class="password-wrap"><input id="forgotConfirm" name="confirm_password" type="password" placeholder="Confirm new password" required><button class="toggle-password" type="button" data-toggle-password="forgotConfirm">Show</button></div></div>
+        <button class="submit" type="submit">Update Password</button>
+      </form>
+      <div class="modal-links">
+        <button class="text-link" type="button" data-open-modal="login">Back to login</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const modalMap={login:document.getElementById('loginModal'),register:document.getElementById('registerModal'),forgot:document.getElementById('forgotModal')};
+    const menuToggle=document.getElementById('menuToggle');
+    const menuClose=document.getElementById('menuClose');
+    const sideMenu=document.getElementById('sideMenu');
+    const menuOverlay=document.getElementById('menuOverlay');
+    function openMenu(){sideMenu.classList.add('show');menuOverlay.classList.add('show');document.body.style.overflow='hidden';}
+    function closeMenu(){sideMenu.classList.remove('show');menuOverlay.classList.remove('show');if(!document.querySelector('.modal.show')){document.body.style.overflow='';}}
+    menuToggle.addEventListener('click',openMenu);
+    menuClose.addEventListener('click',closeMenu);
+    menuOverlay.addEventListener('click',closeMenu);
+    document.querySelectorAll('.menu-link').forEach((link)=>link.addEventListener('click',closeMenu));
+    document.querySelectorAll('.menu-actions [data-open-modal]').forEach((button)=>button.addEventListener('click',closeMenu));
+    function closeAllModals(){Object.values(modalMap).forEach((modal)=>modal.classList.remove('show'));if(!sideMenu.classList.contains('show')){document.body.style.overflow='';}}
+    function openModal(name){closeAllModals();const modal=modalMap[name];if(modal){modal.classList.add('show');document.body.style.overflow='hidden';}}
+    document.querySelectorAll('[data-open-modal]').forEach((button)=>button.addEventListener('click',()=>openModal(button.dataset.openModal)));
+    document.querySelectorAll('[data-close-modal]').forEach((button)=>button.addEventListener('click',closeAllModals));
+    document.querySelectorAll('[data-toggle-password]').forEach((button)=>button.addEventListener('click',()=>{const input=document.getElementById(button.dataset.togglePassword);const showing=input.type==='text';input.type=showing?'password':'text';button.textContent=showing?'Show':'Hide';}));
+    Object.values(modalMap).forEach((modal)=>modal.addEventListener('click',(event)=>{if(event.target===modal){closeAllModals();}}));
+    document.addEventListener('keydown',(event)=>{if(event.key==='Escape'){closeAllModals();closeMenu();}});
+    const initialModal={{ active_modal|tojson }};
+    if(initialModal && modalMap[initialModal]){openModal(initialModal);}
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ dashboard_title }}</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#050914; --panel:#0b1220; --card:#111827; --line:#1f2937; --text:#e5e7eb; --muted:#94a3b8; --accent:#22d3ee; }
+    * { box-sizing:border-box; margin:0; padding:0; font-family:'Poppins',sans-serif; }
+    body { background: radial-gradient(circle at top, #101a2f 0%, #050914 55%); color:var(--text); }
+    .page { width:min(1320px, calc(100% - 32px)); margin:0 auto; padding:22px 0 30px; }
+    .top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; }
+    h1 { font-size:26px; color:var(--accent); }
+    .user { color:var(--muted); font-size:14px; }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; }
+    .btn { text-decoration:none; border:1px solid var(--line); color:var(--text); padding:10px 14px; border-radius:10px; background:var(--panel); }
+    .btn:hover { border-color:var(--accent); }
+    .note { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px 16px; color:var(--muted); margin-bottom:18px; }
+    .grid { display:grid; grid-template-columns:1fr; gap:16px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px; }
+    .card h3 { margin-bottom:10px; font-size:18px; color:#d1fae5; }
+    .chart { width:100%; overflow-x:auto; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="top">
+      <div>
+        <h1>{{ dashboard_title }}</h1>
+        <div class="user">Signed in as {{ user.username }}</div>
+      </div>
+      <div class="actions">
+        <a class="btn" href="{{ url_for('dashboard') }}">Back to Main Dashboard</a>
+        <a class="btn" href="{{ url_for('logout') }}">Logout</a>
+      </div>
+    </div>
+
+    <div class="note">Flask route-based analytics view (image-style structure): each chart is generated in <code>app.py</code> function and rendered with <code>render_template</code>.</div>
+
+    <section class="grid">
+      {% for item in charts %}
+      <article class="card">
+        <h3>{{ item.title }}</h3>
+        <div class="chart">{{ item.graph | safe }}</div>
+      </article>
+      {% endfor %}
+    </section>
+  </div>
+</body>
+</html>
