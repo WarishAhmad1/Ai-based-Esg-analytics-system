@@ -7,21 +7,42 @@
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    :root { --bg:#050914; --panel:#0b1220; --card:#111827; --line:#1f2937; --text:#e5e7eb; --muted:#94a3b8; --accent:#22d3ee; }
-    * { box-sizing:border-box; margin:0; padding:0; font-family:'Poppins',sans-serif; }
-    body { background: radial-gradient(circle at top, #101a2f 0%, #050914 55%); color:var(--text); }
-    .page { width:min(1320px, calc(100% - 32px)); margin:0 auto; padding:22px 0 30px; }
-    .top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; }
-    h1 { font-size:26px; color:var(--accent); }
-    .user { color:var(--muted); font-size:14px; }
-    .actions { display:flex; gap:10px; flex-wrap:wrap; }
-    .btn { text-decoration:none; border:1px solid var(--line); color:var(--text); padding:10px 14px; border-radius:10px; background:var(--panel); }
-    .btn:hover { border-color:var(--accent); }
-    .note { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px 16px; color:var(--muted); margin-bottom:18px; }
-    .grid { display:grid; grid-template-columns:1fr; gap:16px; }
-    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px; }
-    .card h3 { margin-bottom:10px; font-size:18px; color:#d1fae5; }
-    .chart { width:100%; overflow-x:auto; }
+    :root{
+      --bg:#f4f7fb;--surface:#fff;--soft:#eef8f5;--text:#213534;--muted:#5f7a75;--accent:#0f766e;--accent2:#14b8a6;
+      --line:rgba(15,118,110,.14);--shadow:0 18px 40px rgba(15,23,42,.08)
+    }
+    *{box-sizing:border-box;margin:0;padding:0;font-family:'Poppins',sans-serif}
+    body{background:linear-gradient(180deg,#f4f7fb 0%,#eef8f5 100%);color:var(--text)}
+    .page{width:min(1320px,calc(100% - 32px));margin:0 auto;padding:22px 0 30px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+    h1{font-size:30px;color:var(--accent)}
+    .user{color:var(--muted);font-size:14px}
+    .actions{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{display:inline-flex;text-decoration:none;border:1px solid var(--line);color:var(--accent);padding:10px 14px;border-radius:999px;background:#fff;transition:transform .22s ease,box-shadow .22s ease}
+    .btn:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 10px 20px rgba(15,118,110,.18)}
+    .note{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 16px;color:var(--muted);margin-bottom:18px;box-shadow:var(--shadow)}
+    .kpi-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}
+    .kpi-tile{background:linear-gradient(180deg,#ffffff 0%,#f8fffd 100%);border:1px solid var(--line);border-radius:16px;padding:14px 16px;box-shadow:var(--shadow)}
+    .kpi-tile .label{display:block;color:var(--muted);font-size:13px;margin-bottom:8px}
+    .kpi-tile .value{display:block;color:#0b3f39;font-size:30px;font-weight:700;line-height:1.1}
+    .kpi-tile .note{margin:8px 0 0;padding:0;border:none;background:none;box-shadow:none;font-size:12px;color:var(--muted)}
+    .dashboard-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}
+    .card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:var(--shadow)}
+    .card h3{margin-bottom:10px;font-size:20px;color:#0b3f39}
+    .chart{width:100%;overflow-x:auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:8px}
+    .mini-kpis{margin-top:10px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .mini-kpi{background:var(--soft);border:1px solid rgba(15,118,110,.12);border-radius:12px;padding:10px 12px}
+    .mini-kpi .name{display:block;color:var(--muted);font-size:12px;margin-bottom:6px}
+    .mini-kpi .metric{display:block;color:#0f766e;font-size:18px;font-weight:700;line-height:1.1}
+    .span-4{grid-column:span 4}.span-6{grid-column:span 6}.span-8{grid-column:span 8}.span-12{grid-column:span 12}
+    .kpi-panel{padding:18px}
+    .kpi-panel h3{margin-bottom:14px}
+    .kpi-stack{display:grid;gap:10px}
+    .kpi-row{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;background:var(--soft);border:1px solid rgba(15,118,110,.12);border-radius:12px}
+    .kpi-row .name{color:var(--muted);font-size:13px}
+    .kpi-row .value{color:#0f766e;font-weight:700}
+    @media (max-width:980px){.kpi-strip,.mini-kpis{grid-template-columns:1fr}.dashboard-grid{grid-template-columns:1fr}.span-4,.span-6,.span-8,.span-12{grid-column:span 1}}
+    @media (max-width:800px){.top{flex-direction:column;align-items:flex-start}}
   </style>
 </head>
 <body>
@@ -39,14 +60,141 @@
 
     <div class="note">Flask route-based analytics view (image-style structure): each chart is generated in <code>app.py</code> function and rendered with <code>render_template</code>.</div>
 
-    <section class="grid">
-      {% for item in charts %}
-      <article class="card">
-        <h3>{{ item.title }}</h3>
-        <div class="chart">{{ item.graph | safe }}</div>
+    {% if summary_kpis %}
+    <section class="kpi-strip">
+      {% for kpi in summary_kpis %}
+      <article class="kpi-tile">
+        <span class="label">{{ kpi.label }}</span>
+        <span class="value">{{ kpi.value }}</span>
+        {% if kpi.note %}<p class="note">{{ kpi.note }}</p>{% endif %}
       </article>
       {% endfor %}
     </section>
+    {% endif %}
+
+    <section class="dashboard-grid">
+      {% if charts|length > 0 %}
+      <article class="card span-8">
+        <h3>{{ charts[0].title }}</h3>
+        <div class="chart">{{ charts[0].graph | safe }}</div>
+        {% if charts[0].kpis %}
+        <div class="mini-kpis">
+          {% for kpi in charts[0].kpis %}
+          <div class="mini-kpi">
+            <span class="name">{{ kpi.label }}</span>
+            <span class="metric">{{ kpi.value }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </article>
+      {% endif %}
+
+      {% if charts|length > 1 %}
+      <article class="card span-4">
+        <h3>{{ charts[1].title }}</h3>
+        <div class="chart">{{ charts[1].graph | safe }}</div>
+        {% if charts[1].kpis %}
+        <div class="mini-kpis">
+          {% for kpi in charts[1].kpis %}
+          <div class="mini-kpi">
+            <span class="name">{{ kpi.label }}</span>
+            <span class="metric">{{ kpi.value }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </article>
+      {% endif %}
+
+      {% if charts|length > 3 %}
+      {% for chart in charts[3:] %}
+      <article class="card span-6">
+        <h3>{{ chart.title }}</h3>
+        <div class="chart">{{ chart.graph | safe }}</div>
+        {% if chart.kpis %}
+        <div class="mini-kpis">
+          {% for kpi in chart.kpis %}
+          <div class="mini-kpi">
+            <span class="name">{{ kpi.label }}</span>
+            <span class="metric">{{ kpi.value }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </article>
+      {% endfor %}
+      {% endif %}
+
+      {% if charts|length > 2 %}
+      <article class="card span-12">
+        <h3>{{ charts[2].title }}</h3>
+        <div class="chart">{{ charts[2].graph | safe }}</div>
+        {% if charts[2].kpis %}
+        <div class="mini-kpis">
+          {% for kpi in charts[2].kpis %}
+          <div class="mini-kpi">
+            <span class="name">{{ kpi.label }}</span>
+            <span class="metric">{{ kpi.value }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </article>
+      {% endif %}
+
+      {% if summary_kpis %}
+      <article class="card span-12 kpi-panel">
+        <h3>KPI Snapshot</h3>
+        <div class="kpi-stack">
+          {% for kpi in summary_kpis %}
+          <div class="kpi-row">
+            <span class="name">{{ kpi.label }}</span>
+            <span class="value">{{ kpi.value }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </article>
+      {% endif %}
+    </section>
   </div>
+  <script>
+    function applyDashboardThemeToPlots() {
+      if (!window.Plotly) return;
+      const themedLayout = {
+        paper_bgcolor: "#ffffff",
+        plot_bgcolor: "#f8fbfa",
+        font: { color: "#213534", family: "Poppins, sans-serif" },
+        colorway: ["#0f766e", "#14b8a6", "#22c55e", "#0891b2", "#f59e0b", "#ef4444"],
+        legend: {
+          bgcolor: "rgba(255,255,255,0.88)",
+          bordercolor: "rgba(15,118,110,0.14)",
+          borderwidth: 1,
+          font: { color: "#1f3f39" }
+        },
+        xaxis: {
+          gridcolor: "rgba(15,118,110,0.12)",
+          zerolinecolor: "rgba(15,118,110,0.12)",
+          linecolor: "rgba(15,118,110,0.18)",
+          tickfont: { color: "#365a55" },
+          title: { font: { color: "#1f3f39" } }
+        },
+        yaxis: {
+          gridcolor: "rgba(15,118,110,0.12)",
+          zerolinecolor: "rgba(15,118,110,0.12)",
+          linecolor: "rgba(15,118,110,0.18)",
+          tickfont: { color: "#365a55" },
+          title: { font: { color: "#1f3f39" } }
+        }
+      };
+
+      document.querySelectorAll(".plotly-graph-div").forEach((plot) => {
+        window.Plotly.relayout(plot, themedLayout);
+      });
+    }
+
+    setTimeout(applyDashboardThemeToPlots, 0);
+    window.addEventListener("load", applyDashboardThemeToPlots);
+  </script>
 </body>
 </html>

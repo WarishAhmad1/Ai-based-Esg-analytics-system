@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESG Score Prediction | AI ESG Analytics</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --surface: #fff;
+      --soft: #eef8f5;
+      --text: #213534;
+      --muted: #5f7a75;
+      --accent: #0f766e;
+      --accent2: #14b8a6;
+      --dark: #022c22;
+      --line: rgba(15,118,110,.14);
+      --shadow: 0 18px 40px rgba(15,23,42,.08);
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+    body {
+      background: linear-gradient(180deg, #f4f7fb 0%, #eef8f5 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .page {
+      width: min(1000px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0 42px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand h1 {
+      font-size: 28px;
+      color: var(--accent);
+    }
+    .brand p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .btn {
+      padding: 10px 18px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid var(--line);
+      text-decoration: none;
+      color: var(--accent);
+      font-weight: 500;
+      transition: all 0.22s ease;
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(15,118,110,0.12);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      border: none;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 32px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+    h2 {
+      font-size: 24px;
+      color: var(--dark);
+      margin-bottom: 8px;
+    }
+    .sub {
+      color: var(--muted);
+      margin-bottom: 24px;
+      font-size: 15px;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-left: 4px;
+    }
+    input {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 14px;
+      border: 1px solid rgba(15,118,110,0.16);
+      background: #fff;
+      outline: none;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+    input:focus {
+      border-color: var(--accent2);
+      box-shadow: 0 0 0 4px rgba(20,184,166,0.08);
+    }
+    .full-width {
+      grid-column: span 2;
+    }
+    .submit-btn {
+      margin-top: 12px;
+      padding: 14px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.25s ease;
+    }
+    .submit-btn:hover {
+      filter: brightness(1.05);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(15,118,110,0.2);
+    }
+    .result-section {
+      margin-top: 32px;
+      padding-top: 32px;
+      border-top: 1px solid var(--line);
+    }
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-top: 20px;
+    }
+    .result-card {
+      padding: 20px;
+      border-radius: 20px;
+      background: var(--soft);
+      border: 1px solid rgba(15,118,110,0.08);
+      text-align: center;
+    }
+    .result-card span {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .result-card strong {
+      font-size: 28px;
+      color: var(--accent);
+    }
+    .category-badge {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 24px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 20px;
+      letter-spacing: 1px;
+    }
+    .aaa { background: #dcfce7; color: #15803d; border: 2px solid #bbf7d0; }
+    .aa { background: #ecfdf5; color: #10b981; border: 2px solid #d1fae5; }
+    .a { background: #f0fdf4; color: #22c55e; border: 2px solid #dcfce7; }
+    .bbb { background: #fefce8; color: #a16207; border: 2px solid #fef08a; }
+    .bb { background: #fffbeb; color: #d97706; border: 2px solid #fef3c7; }
+    .b { background: #fff1f2; color: #e11d48; border: 2px solid #fecdd3; }
+
+    @media (max-width: 768px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .full-width { grid-column: span 1; }
+      .result-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div class="header-left">
+        <div class="brand">
+          <h1>ESG Predictor</h1>
+          <p>AI-Powered ESG Score Forecasting</p>
+        </div>
+      </div>
+      <div class="actions">
+        <a class="btn" href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a class="btn btn-primary" href="{{ url_for('logout') }}">Logout</a>
+      </div>
+    </header>
+
+    <div class="card">
+      <h2>Environmental, Social, and Governance Prediction</h2>
+      <p class="sub">Fill in the company's financial and operational data to predict its ESG rating.</p>
+
+      <form method="POST">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Revenue ($)</label>
+            <input type="number" step="any" name="Revenue" placeholder="e.g. 5000000" required>
+          </div>
+          <div class="form-group">
+            <label>Profit Margin (%)</label>
+            <input type="number" step="any" name="ProfitMargin" placeholder="e.g. 15.5" required>
+          </div>
+          <div class="form-group">
+            <label>Market Capitalization ($)</label>
+            <input type="number" step="any" name="MarketCap" placeholder="e.g. 100000000" required>
+          </div>
+          <div class="form-group">
+            <label>Growth Rate (%)</label>
+            <input type="number" step="any" name="GrowthRate" placeholder="e.g. 4.2" required>
+          </div>
+          <div class="form-group">
+            <label>Carbon Emissions (Metric Tons)</label>
+            <input type="number" step="any" name="CarbonEmissions" placeholder="e.g. 1200" required>
+          </div>
+          <div class="form-group">
+            <label>Water Usage (m³)</label>
+            <input type="number" step="any" name="WaterUsage" placeholder="e.g. 8500" required>
+          </div>
+          <div class="form-group">
+            <label>Energy Consumption (MWh)</label>
+            <input type="number" step="any" name="EnergyConsumption" placeholder="e.g. 4500" required>
+          </div>
+          <div class="form-group">
+            <label>Industry Classification (Encoded)</label>
+            <input type="number" name="industry_enc" placeholder="e.g. 5" required>
+          </div>
+          <div class="form-group">
+            <label>Region Classification (Encoded)</label>
+            <input type="number" name="region_enc" placeholder="e.g. 2" required>
+          </div>
+          <div class="form-group">
+            <label>Target Year (Normalized)</label>
+            <input type="number" step="any" name="year_norm" placeholder="e.g. 0.8" required>
+          </div>
+          
+          <button type="submit" class="submit-btn full-width">
+            Run Prediction Model
+          </button>
+        </div>
+      </form>
+
+      {% if prediction %}
+      <div class="result-section">
+        <h2>Prediction Insights</h2>
+        <p class="sub">Estimated ESG scores based on the provided parameters.</p>
+        
+        <div class="result-grid">
+          <div class="result-card">
+            <span>Environmental</span>
+            <strong>{{ prediction.Environmental }}</strong>
+          </div>
+          <div class="result-card">
+            <span>Social</span>
+            <strong>{{ prediction.Social }}</strong>
+          </div>
+          <div class="result-card">
+            <span>Governance</span>
+            <strong>{{ prediction.Governance }}</strong>
+          </div>
+          <div class="result-card" style="background: var(--accent); color: white; border: none;">
+            <span style="color: rgba(255,255,255,0.7)">Overall ESG</span>
+            <strong style="color: white">{{ prediction.Overall }}</strong>
+          </div>
+        </div>
+
+        <div style="text-align: center;">
+          <div class="category-badge {{ category | lower }}">
+            ESG RATING: {{ category }}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+<div class="esg-info">
+
+    <h2>How Overall ESG Score is Calculated</h2>
+
+    <p>
+        The Overall ESG Score is calculated using a
+        weighted scoring methodology based on the three
+        major sustainability pillars:
+    </p>
+
+    <ul>
+        <li>
+            <strong>Environmental (E)</strong>
+        </li>
+
+        <li>
+            <strong>Social (S)</strong>
+        </li>
+
+        <li>
+            <strong>Governance (G)</strong>
+        </li>
+    </ul>
+
+    <p>
+        Instead of using a simple average,
+        the system applies professional ESG weights
+        commonly inspired by industry ESG frameworks.
+    </p>
+
+    <h3>ESG Formula</h3>
+
+    <div class="formula">
+        Overall ESG =
+        (0.4 × Environmental) +
+        (0.3 × Social) +
+        (0.3 × Governance)
+    </div>
+
+    <h3>Why Different Weights are Used?</h3>
+
+    <p>
+        Environmental sustainability is given
+        higher importance because modern industries face
+        significant climate-related and environmental risks.
+    </p>
+
+    <p>
+        Factors such as:
+    </p>
+
+    <ul>
+
+        <li>Carbon Emissions</li>
+
+        <li>Energy Consumption</li>
+
+        <li>Water Usage</li>
+
+        <li>Pollution Impact</li>
+
+        <li>Environmental Regulations</li>
+
+    </ul>
+
+    <p>
+        directly affect long-term business sustainability,
+        investor trust, regulatory compliance,
+        and corporate reputation.
+    </p>
+
+    <p>
+        Therefore, the Environmental pillar receives
+        <strong>40% weight</strong>,
+        while Social and Governance factors receive
+        <strong>30% weight each</strong>.
+    </p>
+
+    <h3>What the ESG Pillars Represent</h3>
+
+    <ul>
+
+        <li>
+            <strong>Environmental (40%)</strong><br>
+            Measures environmental impact such as
+            emissions, energy efficiency,
+            sustainability practices,
+            and resource consumption.
+        </li>
+
+        <br>
+
+        <li>
+            <strong>Social (30%)</strong><br>
+            Measures employee welfare,
+            diversity, customer relations,
+            labor practices,
+            and social responsibility.
+        </li>
+
+        <br>
+
+        <li>
+            <strong>Governance (30%)</strong><br>
+            Measures company ethics,
+            board structure,
+            transparency,
+            compliance,
+            and risk management practices.
+        </li>
+
+    </ul>
+
+    <h3>Industry-Level ESG Methodology</h3>
+
+    <p>
+        This weighted ESG scoring approach is inspired by
+        professional sustainability assessment methodologies
+        used in modern ESG analytics and financial risk evaluation.
+    </p>
+
+    <p>
+        The system combines Machine Learning predictions
+        with weighted ESG evaluation to generate
+        a more realistic and industry-oriented
+        sustainability score for organizations.
+    </p>
+
+</div>
+
+
+    <footer style="text-align: center; color: var(--muted); font-size: 13px;">
+      © 2026 AI ESG Analytics | Logged in as {{ user.username }}
+    </footer>
+  </div>
+</body>
+</html>

@@ -192,6 +192,7 @@
         <div class="hero-actions">
           {% if user %}
             <a class="btn btn-primary" href="{{ url_for('dashboard') }}">Open Dashboard</a>
+            <a class="btn btn-primary" href="{{ url_for('predict_esg') }}">Predict ESG Scores</a>
           {% else %}
             <button class="btn btn-primary" type="button" data-open-modal="register">Create Account</button>
             <button class="btn btn-ghost" type="button" data-open-modal="login">Login</button>

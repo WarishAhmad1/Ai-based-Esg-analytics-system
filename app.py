@@ -13,10 +13,20 @@ from flask import Flask, flash, redirect, render_template, request, session, url
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import check_password_hash, generate_password_hash
-
+import joblib
+import numpy as np
 from IPython.display import Markdown, display
 from contextlib import contextmanager
+from functools import wraps
 
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in to access this page.', 'danger')
+            return redirect(url_for('home', auth='login'))
+        return f(*args, **kwargs)   
+    return decorated
 df = pd.read_csv("company_esg_financial_dataset.csv")
 
 class NotebookColumn:
@@ -228,17 +238,318 @@ def governance_risk_level(score):
 
 def _theme(fig):
     fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor="#0b1220",
-        plot_bgcolor="#0b1220",
-        font=dict(color="#e5e7eb"),
+        template="plotly_white",
+        paper_bgcolor="#ffffff",
+        plot_bgcolor="#f8fbfa",
+        colorway=["#0f766e", "#14b8a6", "#22c55e", "#0891b2", "#f59e0b", "#ef4444"],
+        font=dict(color="#213534", family="Poppins, sans-serif"),
         margin=dict(l=40, r=20, t=60, b=40),
+        legend=dict(
+            bgcolor="rgba(255,255,255,0.88)",
+            bordercolor="rgba(15,118,110,0.14)",
+            borderwidth=1,
+            font=dict(color="#1f3f39"),
+        ),
+        xaxis=dict(
+            gridcolor="rgba(15,118,110,0.12)",
+            zerolinecolor="rgba(15,118,110,0.12)",
+            linecolor="rgba(15,118,110,0.18)",
+            tickfont=dict(color="#365a55"),
+            title_font=dict(color="#1f3f39"),
+        ),
+        yaxis=dict(
+            gridcolor="rgba(15,118,110,0.12)",
+            zerolinecolor="rgba(15,118,110,0.12)",
+            linecolor="rgba(15,118,110,0.18)",
+            tickfont=dict(color="#365a55"),
+            title_font=dict(color="#1f3f39"),
+        ),
     )
     return fig
 
 
 def plot_html(fig):
     return _theme(fig).to_html(full_html=False, include_plotlyjs=False)
+
+
+_original_pio_to_html = pio.to_html
+
+
+def themed_to_html(fig, *args, **kwargs):
+    return _original_pio_to_html(_theme(fig), *args, **kwargs)
+
+
+pio.to_html = themed_to_html
+
+
+def _fmt_number(value, decimals=1):
+    if pd.isna(value):
+        return "0"
+    if decimals <= 0:
+        return f"{float(value):,.0f}"
+    return f"{float(value):,.{decimals}f}"
+
+
+def _fmt_percent(value, decimals=1):
+    return f"{_fmt_number(value, decimals)}%"
+
+
+def _fmt_delta(value, decimals=1):
+    if value is None or pd.isna(value):
+        return "No prior period"
+    if value > 0:
+        return f"↑ {_fmt_number(abs(value), decimals)}%"
+    if value < 0:
+        return f"↓ {_fmt_number(abs(value), decimals)}%"
+    return "→ 0.0%"
+
+
+def _pct_change(current, previous):
+    if previous in (None, 0) or pd.isna(previous) or pd.isna(current):
+        return None
+    return ((current - previous) / previous) * 100
+
+
+def build_dashboard_kpis(dashboard_key, df):
+    summary = []
+    per_chart = [[], [], []]
+    latest = latest_company_snapshot(df)
+
+    if dashboard_key == "performance":
+        perf = latest[["CompanyName", "ESG_Overall"]].dropna().copy()
+        if perf.empty:
+            return {"summary": summary, "per_chart": per_chart}
+
+        perf["Category"] = perf["ESG_Overall"].apply(categorize_esg)
+        top_row = perf.nlargest(1, "ESG_Overall").iloc[0]
+        low_row = perf.nsmallest(1, "ESG_Overall").iloc[0]
+        avg_score = perf["ESG_Overall"].mean()
+        spread = top_row["ESG_Overall"] - low_row["ESG_Overall"]
+        category_counts = perf["Category"].value_counts()
+
+        summary = [
+            {"label": "Average ESG Score", "value": _fmt_number(avg_score, 1), "note": "Across latest company snapshots"},
+            {"label": "Top Performer", "value": top_row["CompanyName"], "note": _fmt_percent(top_row["ESG_Overall"], 1)},
+            {"label": "Score Spread", "value": _fmt_number(spread, 1), "note": "Top vs lowest performer"},
+        ]
+        per_chart[0] = [
+            {"label": "Highest Score", "value": _fmt_percent(top_row["ESG_Overall"], 1)},
+            {"label": "Lowest Score", "value": _fmt_percent(low_row["ESG_Overall"], 1)},
+            {"label": "Companies", "value": _fmt_number(len(perf), 0)},
+        ]
+        per_chart[1] = [
+            {"label": "High ESG", "value": _fmt_number(category_counts.get("High", 0), 0)},
+            {"label": "Medium ESG", "value": _fmt_number(category_counts.get("Medium", 0), 0)},
+            {"label": "Low ESG", "value": _fmt_number(category_counts.get("Low", 0), 0)},
+        ]
+        per_chart[2] = [
+            {"label": "Portfolio Average", "value": _fmt_percent(avg_score, 1)},
+            {"label": "Leader", "value": top_row["CompanyName"]},
+            {"label": "Lagging", "value": low_row["CompanyName"]},
+        ]
+
+    elif dashboard_key == "environmental":
+        env_df = df.dropna(subset=["CarbonEmissions", "EnergyConsumption", "ESG_Overall"]).copy()
+        if env_df.empty:
+            return {"summary": summary, "per_chart": per_chart}
+
+        trend = env_df.groupby("Year", as_index=False)["CarbonEmissions"].mean().sort_values("Year")
+        compare = latest_company_snapshot(env_df)[["CompanyName", "CarbonEmissions", "EnergyConsumption", "ESG_Overall"]].dropna()
+        if compare.empty:
+            return {"summary": summary, "per_chart": per_chart}
+
+        highest_emitter = compare.nlargest(1, "CarbonEmissions").iloc[0]
+        lowest_emitter = compare.nsmallest(1, "CarbonEmissions").iloc[0]
+        avg_emission = compare["CarbonEmissions"].mean()
+        avg_energy = compare["EnergyConsumption"].mean()
+        corr = compare["CarbonEmissions"].corr(compare["ESG_Overall"])
+        latest_emission = trend.iloc[-1]["CarbonEmissions"]
+        previous_emission = trend.iloc[-2]["CarbonEmissions"] if len(trend) > 1 else None
+        yoy_delta = _pct_change(latest_emission, previous_emission)
+
+        summary = [
+            {"label": "Avg Carbon Emissions", "value": _fmt_number(avg_emission, 0), "note": "Latest company baseline"},
+            {"label": "Avg Energy Consumption", "value": _fmt_number(avg_energy, 0), "note": "Portfolio-wide average"},
+            {"label": "Emission YoY", "value": _fmt_delta(yoy_delta, 1), "note": "Latest year vs previous"},
+        ]
+        per_chart[0] = [
+            {"label": "Latest Emissions", "value": _fmt_number(latest_emission, 0)},
+            {"label": "YoY Change", "value": _fmt_delta(yoy_delta, 1)},
+            {"label": "Best (Lowest) Year", "value": str(int(trend.loc[trend["CarbonEmissions"].idxmin(), "Year"]))},
+        ]
+        per_chart[1] = [
+            {"label": "Highest Emitter", "value": highest_emitter["CompanyName"]},
+            {"label": "Lowest Emitter", "value": lowest_emitter["CompanyName"]},
+            {"label": "Avg Energy", "value": _fmt_number(avg_energy, 0)},
+        ]
+        per_chart[2] = [
+            {"label": "Emission vs ESG Corr", "value": _fmt_number(corr if pd.notna(corr) else 0, 2)},
+            {"label": "Best ESG (Latest)", "value": compare.nlargest(1, "ESG_Overall").iloc[0]["CompanyName"]},
+            {"label": "Companies", "value": _fmt_number(len(compare), 0)},
+        ]
+
+    elif dashboard_key == "social":
+        social_df = df.dropna(subset=["ESG_Social", "ESG_Governance"]).copy()
+        latest_social = latest_company_snapshot(social_df)
+        metrics = latest_social[["CompanyName", "ESG_Social", "ESG_Governance"]].copy()
+        if metrics.empty:
+            return {"summary": summary, "per_chart": per_chart}
+
+        metrics["Customer Satisfaction"] = metrics["ESG_Social"].round(1)
+        metrics["Engagement"] = (metrics["ESG_Social"] * 0.7 + metrics["ESG_Governance"] * 0.3).round(1)
+        metrics["Employee Turnover (%)"] = (35 - metrics["ESG_Social"] * 0.3).clip(lower=5, upper=35).round(1)
+        metrics["Diversity (%)"] = (metrics["ESG_Social"] * 0.6).clip(lower=20, upper=70).round(1)
+        metrics["Inclusion (%)"] = (metrics["ESG_Governance"] * 0.5).clip(lower=20, upper=70).round(1)
+
+        top_satisfaction = metrics.nlargest(1, "Customer Satisfaction").iloc[0]
+        lowest_turnover = metrics.nsmallest(1, "Employee Turnover (%)").iloc[0]
+
+        summary = [
+            {"label": "Avg Social Score", "value": _fmt_percent(metrics["ESG_Social"].mean(), 1), "note": "Latest snapshot"},
+            {"label": "Avg Engagement", "value": _fmt_percent(metrics["Engagement"].mean(), 1), "note": "Weighted social signal"},
+            {"label": "Avg Turnover", "value": _fmt_percent(metrics["Employee Turnover (%)"].mean(), 1), "note": "Lower is better"},
+        ]
+        per_chart[0] = [
+            {"label": "Top Satisfaction", "value": top_satisfaction["CompanyName"]},
+            {"label": "Avg Engagement", "value": _fmt_percent(metrics["Engagement"].mean(), 1)},
+            {"label": "Satisfaction Gap", "value": _fmt_number(metrics["Customer Satisfaction"].max() - metrics["Customer Satisfaction"].min(), 1)},
+        ]
+        per_chart[1] = [
+            {"label": "Lowest Turnover", "value": lowest_turnover["CompanyName"]},
+            {"label": "Turnover Floor", "value": _fmt_percent(metrics["Employee Turnover (%)"].min(), 1)},
+            {"label": "Turnover Ceiling", "value": _fmt_percent(metrics["Employee Turnover (%)"].max(), 1)},
+        ]
+        per_chart[2] = [
+            {"label": "Avg Diversity", "value": _fmt_percent(metrics["Diversity (%)"].mean(), 1)},
+            {"label": "Avg Inclusion", "value": _fmt_percent(metrics["Inclusion (%)"].mean(), 1)},
+            {"label": "D&I Leaders", "value": _fmt_number((metrics["Diversity (%)"] + metrics["Inclusion (%)"]).nlargest(3).count(), 0)},
+        ]
+
+    elif dashboard_key == "governance":
+        gov_df = df.dropna(subset=["ESG_Governance", "ESG_Overall", "ProfitMargin"]).copy()
+        comp = latest_company_snapshot(gov_df)[["CompanyName", "ESG_Governance", "ESG_Overall", "ProfitMargin"]].copy()
+        if comp.empty:
+            return {"summary": summary, "per_chart": per_chart}
+
+        comp["Board Compliance"] = (comp["ESG_Governance"] * 0.9 + comp["ESG_Overall"] * 0.1).clip(0, 100).round(1)
+        comp["Audit Compliance"] = (comp["ESG_Governance"] * 0.75 + comp["ESG_Overall"] * 0.25).clip(0, 100).round(1)
+        comp["Regulatory Compliance"] = (comp["ESG_Governance"] * 0.7 + (comp["ProfitMargin"] + 20) * 1.0).clip(0, 100).round(1)
+        comp["Risk Level"] = comp["ESG_Governance"].apply(governance_risk_level)
+        comp["Compliance Avg"] = comp[["Board Compliance", "Audit Compliance", "Regulatory Compliance"]].mean(axis=1)
+
+        top_governance = comp.nlargest(1, "ESG_Governance").iloc[0]
+        best_compliance = comp.nlargest(1, "Compliance Avg").iloc[0]
+        low_risk_count = (comp["Risk Level"] == "Low Risk").sum()
+
+        summary = [
+            {"label": "Avg Governance Score", "value": _fmt_percent(comp["ESG_Governance"].mean(), 1), "note": "Across latest records"},
+            {"label": "Low Risk Companies", "value": _fmt_number(low_risk_count, 0), "note": "Governance risk classification"},
+            {"label": "Best Compliance", "value": best_compliance["CompanyName"], "note": _fmt_percent(best_compliance["Compliance Avg"], 1)},
+        ]
+        per_chart[0] = [
+            {"label": "Top Governance", "value": top_governance["CompanyName"]},
+            {"label": "Top Score", "value": _fmt_percent(top_governance["ESG_Governance"], 1)},
+            {"label": "High Risk Count", "value": _fmt_number((comp["Risk Level"] == "High Risk").sum(), 0)},
+        ]
+        per_chart[1] = [
+            {"label": "Best Compliance", "value": best_compliance["CompanyName"]},
+            {"label": "Avg Compliance", "value": _fmt_percent(comp["Compliance Avg"].mean(), 1)},
+            {"label": "Lowest Compliance", "value": comp.nsmallest(1, "Compliance Avg").iloc[0]["CompanyName"]},
+        ]
+        risk_counts = comp["Risk Level"].value_counts()
+        per_chart[2] = [
+            {"label": "Low Risk", "value": _fmt_number(risk_counts.get("Low Risk", 0), 0)},
+            {"label": "Medium Risk", "value": _fmt_number(risk_counts.get("Medium Risk", 0), 0)},
+            {"label": "High Risk", "value": _fmt_number(risk_counts.get("High Risk", 0), 0)},
+        ]
+
+    elif dashboard_key == "risk":
+        risk_df = df.dropna(subset=["ESG_Overall", "CarbonEmissions", "Revenue", "ProfitMargin"]).copy()
+        metrics = latest_company_snapshot(risk_df)[["CompanyName", "ESG_Overall", "CarbonEmissions", "Revenue", "ProfitMargin"]].copy()
+        if metrics.empty:
+            return {"summary": summary, "per_chart": per_chart}
+
+        metrics["EmissionIntensity"] = metrics["CarbonEmissions"] / metrics["Revenue"].replace(0, pd.NA)
+        metrics["EmissionIntensity"] = metrics["EmissionIntensity"].fillna(metrics["EmissionIntensity"].median())
+        metrics["ESG_Risk_Component"] = 100 - metrics["ESG_Overall"]
+        metrics["Emission_Risk_Component"] = 100 * (
+            (metrics["EmissionIntensity"] - metrics["EmissionIntensity"].min())
+            / (metrics["EmissionIntensity"].max() - metrics["EmissionIntensity"].min() + 1e-9)
+        )
+        metrics["Profit_Risk_Component"] = (20 - metrics["ProfitMargin"]).clip(lower=0, upper=40) * 2.5
+        metrics["Risk Score"] = (
+            0.5 * metrics["ESG_Risk_Component"]
+            + 0.35 * metrics["Emission_Risk_Component"]
+            + 0.15 * metrics["Profit_Risk_Component"]
+        ).clip(0, 100).round(1)
+        metrics["Risk Category"] = metrics["Risk Score"].apply(categorize_risk)
+
+        highest_risk = metrics.nlargest(1, "Risk Score").iloc[0]
+        lowest_risk = metrics.nsmallest(1, "Risk Score").iloc[0]
+        risk_counts = metrics["Risk Category"].value_counts()
+        corr = metrics["Risk Score"].corr(metrics["ESG_Overall"])
+
+        summary = [
+            {"label": "Average Risk Score", "value": _fmt_percent(metrics["Risk Score"].mean(), 1), "note": "Calculated across companies"},
+            {"label": "High Risk Companies", "value": _fmt_number(risk_counts.get("High Risk", 0), 0), "note": "Requires immediate attention"},
+            {"label": "Safest Company", "value": lowest_risk["CompanyName"], "note": _fmt_percent(lowest_risk["Risk Score"], 1)},
+        ]
+        per_chart[0] = [
+            {"label": "Highest Risk", "value": highest_risk["CompanyName"]},
+            {"label": "Median Risk", "value": _fmt_percent(metrics["Risk Score"].median(), 1)},
+            {"label": "Lowest Risk", "value": lowest_risk["CompanyName"]},
+        ]
+        per_chart[1] = [
+            {"label": "Risk vs ESG Corr", "value": _fmt_number(corr if pd.notna(corr) else 0, 2)},
+            {"label": "Avg Emission Intensity", "value": _fmt_number(metrics["EmissionIntensity"].mean(), 3)},
+            {"label": "Portfolio ESG", "value": _fmt_percent(metrics["ESG_Overall"].mean(), 1)},
+        ]
+        per_chart[2] = [
+            {"label": "Low Risk", "value": _fmt_number(risk_counts.get("Low Risk", 0), 0)},
+            {"label": "Medium Risk", "value": _fmt_number(risk_counts.get("Medium Risk", 0), 0)},
+            {"label": "High Risk", "value": _fmt_number(risk_counts.get("High Risk", 0), 0)},
+        ]
+
+    elif dashboard_key == "trend":
+        trend_df = df.dropna(subset=["ESG_Overall"]).copy()
+        overall = trend_df.groupby("Year", as_index=False)["ESG_Overall"].mean().sort_values("Year")
+        latest_ranking = (
+            trend_df.groupby(["Year", "CompanyName"], as_index=False)["ESG_Overall"].mean()
+            .sort_values(["CompanyName", "Year"])
+            .groupby("CompanyName", as_index=False)
+            .tail(1)
+        )
+        if overall.empty or latest_ranking.empty:
+            return {"summary": summary, "per_chart": per_chart}
+
+        first_score = overall.iloc[0]["ESG_Overall"]
+        latest_score = overall.iloc[-1]["ESG_Overall"]
+        improvement = latest_score - first_score
+        top_latest = latest_ranking.nlargest(1, "ESG_Overall").iloc[0]
+        top_companies = latest_ranking.nlargest(8, "ESG_Overall")["CompanyName"]
+
+        summary = [
+            {"label": "Latest Avg ESG", "value": _fmt_percent(latest_score, 1), "note": f"Year {int(overall.iloc[-1]['Year'])}"},
+            {"label": "Since Start Change", "value": _fmt_number(improvement, 1), "note": f"From {int(overall.iloc[0]['Year'])} to {int(overall.iloc[-1]['Year'])}"},
+            {"label": "Top Current Company", "value": top_latest["CompanyName"], "note": _fmt_percent(top_latest["ESG_Overall"], 1)},
+        ]
+        per_chart[0] = [
+            {"label": "Start ESG", "value": _fmt_percent(first_score, 1)},
+            {"label": "Latest ESG", "value": _fmt_percent(latest_score, 1)},
+            {"label": "Net Change", "value": _fmt_number(improvement, 1)},
+        ]
+        per_chart[1] = [
+            {"label": "Tracked Top Companies", "value": _fmt_number(top_companies.nunique(), 0)},
+            {"label": "Best Current", "value": top_latest["CompanyName"]},
+            {"label": "Best Current Score", "value": _fmt_percent(top_latest["ESG_Overall"], 1)},
+        ]
+        per_chart[2] = [
+            {"label": "Trend Years", "value": _fmt_number(overall["Year"].nunique(), 0)},
+            {"label": "Latest Year", "value": str(int(overall.iloc[-1]["Year"]))},
+            {"label": "Momentum", "value": "Positive" if improvement >= 0 else "Negative"},
+        ]
+
+    return {"summary": summary, "per_chart": per_chart}
 
 
 def load_dataset():
@@ -289,7 +600,18 @@ def latest_company_snapshot(df):
 # --------------------------
 def overall_esg_dashboard(df):
     latest = latest_company_snapshot(df)
-    perf = latest[["CompanyName", "ESG_Overall"]].dropna().copy()
+    perf = latest[
+        [
+            "CompanyName",
+            "ESG_Overall",
+            "ESG_Environmental",
+            "ESG_Social",
+            "ESG_Governance",
+            "Revenue",
+            "ProfitMargin",
+            "CarbonEmissions",
+        ]
+    ].dropna(subset=["CompanyName", "ESG_Overall"]).copy()
     perf["Category"] = perf["ESG_Overall"].apply(categorize_esg)
     perf = perf.sort_values("ESG_Overall", ascending=False)
 
@@ -347,10 +669,58 @@ def overall_esg_dashboard(df):
     )
     fig3.update_layout(title="KPI Overview")
 
+    # D. ESG pillar mix for top companies
+    top_pillars = perf.nlargest(12, "ESG_Overall")[
+        ["CompanyName", "ESG_Environmental", "ESG_Social", "ESG_Governance"]
+    ].copy()
+    pillars_long = top_pillars.melt(
+        id_vars="CompanyName",
+        value_vars=["ESG_Environmental", "ESG_Social", "ESG_Governance"],
+        var_name="Pillar",
+        value_name="Score",
+    )
+    fig4 = px.bar(
+        pillars_long,
+        x="CompanyName",
+        y="Score",
+        color="Pillar",
+        barmode="group",
+        title="Top Companies ESG Pillar Mix",
+    )
+
+    # E. Revenue vs ESG score
+    revenue_scatter = perf.dropna(subset=["Revenue"]).copy()
+    fig5 = px.scatter(
+        revenue_scatter,
+        x="Revenue",
+        y="ESG_Overall",
+        color="Category",
+        hover_name="CompanyName",
+        color_discrete_map={"High": "#22c55e", "Medium": "#f59e0b", "Low": "#ef4444"},
+        title="Revenue vs ESG Score",
+    )
+
+    # F. Profitability and emissions intensity comparison
+    efficiency = perf.dropna(subset=["Revenue", "ProfitMargin", "CarbonEmissions"]).copy()
+    efficiency["EmissionIntensity"] = efficiency["CarbonEmissions"] / (efficiency["Revenue"] + 1e-9)
+    fig6 = px.scatter(
+        efficiency,
+        x="ProfitMargin",
+        y="EmissionIntensity",
+        size="ESG_Overall",
+        color="Category",
+        hover_name="CompanyName",
+        color_discrete_map={"High": "#22c55e", "Medium": "#f59e0b", "Low": "#ef4444"},
+        title="Profit Margin vs Emission Intensity",
+    )
+
     return [
         {"title": "A. Company-wise ESG Score", "graph": plot_html(fig1)},
         {"title": "B. ESG Category Distribution", "graph": plot_html(fig2)},
         {"title": "C. KPI Overview", "graph": plot_html(fig3)},
+        {"title": "D. Top Companies ESG Pillar Mix", "graph": plot_html(fig4)},
+        {"title": "E. Revenue vs ESG Score", "graph": plot_html(fig5)},
+        {"title": "F. Profit Margin vs Emission Intensity", "graph": plot_html(fig6)},
     ]
 
 
@@ -386,10 +756,43 @@ def environmental_dashboard(df):
         title="Emission vs ESG Score",
     )
 
+    env_category = latest[["CompanyName", "ESG_Overall", "CarbonEmissions"]].copy()
+    env_category["ESG Band"] = env_category["ESG_Overall"].apply(categorize_esg)
+    fig4 = px.box(
+        env_category,
+        x="ESG Band",
+        y="CarbonEmissions",
+        color="ESG Band",
+        category_orders={"ESG Band": ["Low", "Medium", "High"]},
+        title="Emission Distribution by ESG Band",
+    )
+
+    energy_trend = env_df.groupby("Year", as_index=False)["EnergyConsumption"].mean().sort_values("Year")
+    fig5 = px.line(
+        energy_trend,
+        x="Year",
+        y="EnergyConsumption",
+        markers=True,
+        title="Energy Consumption Trend",
+    )
+
+    latest_mix = latest[["CompanyName", "CarbonEmissions", "EnergyConsumption"]].copy()
+    latest_mix["Intensity Gap"] = latest_mix["CarbonEmissions"] - latest_mix["EnergyConsumption"]
+    fig6 = px.bar(
+        latest_mix.sort_values("Intensity Gap", ascending=False),
+        x="CompanyName",
+        y="Intensity Gap",
+        color="Intensity Gap",
+        title="Emission vs Energy Intensity Gap",
+    )
+
     return [
         {"title": "A. Emission Trend Over Time", "graph": plot_html(fig1)},
         {"title": "B. Company-wise Emission / Energy Use", "graph": plot_html(fig2)},
         {"title": "C. Emission vs ESG Score", "graph": plot_html(fig3)},
+        {"title": "D. Emission Distribution by ESG Band", "graph": plot_html(fig4)},
+        {"title": "E. Energy Consumption Trend", "graph": plot_html(fig5)},
+        {"title": "F. Emission vs Energy Intensity Gap", "graph": plot_html(fig6)},
     ]
 
 
@@ -436,10 +839,39 @@ def social_dashboard(df):
         title="Diversity / Inclusion Metrics",
     )
 
+    fig4 = px.scatter(
+        metrics,
+        x="Customer Satisfaction",
+        y="Employee Turnover (%)",
+        color="CompanyName",
+        title="Satisfaction vs Turnover",
+    )
+
+    social_trend = social_df.groupby("Year", as_index=False)["ESG_Social"].mean().sort_values("Year")
+    fig5 = px.line(
+        social_trend,
+        x="Year",
+        y="ESG_Social",
+        markers=True,
+        title="Social Score Trend",
+    )
+
+    inclusion_rank = metrics[["CompanyName", "Inclusion (%)"]].sort_values("Inclusion (%)", ascending=False)
+    fig6 = px.bar(
+        inclusion_rank,
+        x="CompanyName",
+        y="Inclusion (%)",
+        color="Inclusion (%)",
+        title="Inclusion Ranking",
+    )
+
     return [
         {"title": "A. Customer Satisfaction / Engagement", "graph": plot_html(fig1)},
         {"title": "B. Employee Turnover Distribution", "graph": plot_html(fig2)},
         {"title": "C. Diversity / Inclusion Metrics", "graph": plot_html(fig3)},
+        {"title": "D. Satisfaction vs Turnover", "graph": plot_html(fig4)},
+        {"title": "E. Social Score Trend", "graph": plot_html(fig5)},
+        {"title": "F. Inclusion Ranking", "graph": plot_html(fig6)},
     ]
 
 
@@ -483,10 +915,43 @@ def governance_dashboard(df):
         color_discrete_map={"Low Risk": "#22c55e", "Medium Risk": "#f59e0b", "High Risk": "#ef4444"},
     )
 
+    compliance_avg = (
+        heatmap_df.mean(axis=0).rename_axis("Compliance Type").reset_index(name="Average Score")
+    )
+    fig4 = px.bar(
+        compliance_avg,
+        x="Compliance Type",
+        y="Average Score",
+        color="Compliance Type",
+        title="Average Compliance Scores",
+    )
+
+    fig5 = px.scatter(
+        comp,
+        x="ProfitMargin",
+        y="ESG_Governance",
+        color="Risk Level",
+        hover_name="CompanyName",
+        color_discrete_map={"Low Risk": "#22c55e", "Medium Risk": "#f59e0b", "High Risk": "#ef4444"},
+        title="Profit Margin vs Governance Score",
+    )
+
+    yearly_gov = gov_df.groupby("Year", as_index=False)["ESG_Governance"].mean().sort_values("Year")
+    fig6 = px.line(
+        yearly_gov,
+        x="Year",
+        y="ESG_Governance",
+        markers=True,
+        title="Governance Score Trend",
+    )
+
     return [
         {"title": "A. Governance Score Comparison", "graph": plot_html(fig1)},
         {"title": "B. Compliance vs Companies", "graph": plot_html(fig2)},
         {"title": "C. Governance Risk Levels", "graph": plot_html(fig3)},
+        {"title": "D. Average Compliance Scores", "graph": plot_html(fig4)},
+        {"title": "E. Profit Margin vs Governance Score", "graph": plot_html(fig5)},
+        {"title": "F. Governance Score Trend", "graph": plot_html(fig6)},
     ]
 
 
@@ -542,10 +1007,41 @@ def risk_dashboard(df):
         title="Risk Categories",
     )
 
+    fig4 = px.scatter(
+        metrics,
+        x="Emission_Risk_Component",
+        y="Profit_Risk_Component",
+        color="Risk Category",
+        hover_name="CompanyName",
+        color_discrete_map={"Low Risk": "#22c55e", "Medium Risk": "#f59e0b", "High Risk": "#ef4444"},
+        title="Emission Risk vs Profit Risk",
+    )
+
+    fig5 = px.box(
+        metrics,
+        x="Risk Category",
+        y="Risk Score",
+        color="Risk Category",
+        title="Risk Score Spread by Category",
+    )
+
+    risk_year = risk_df.groupby("Year", as_index=False)["ESG_Overall"].mean().sort_values("Year")
+    risk_year["Derived Risk"] = (100 - risk_year["ESG_Overall"]).clip(0, 100)
+    fig6 = px.line(
+        risk_year,
+        x="Year",
+        y="Derived Risk",
+        markers=True,
+        title="Portfolio Risk Trend",
+    )
+
     return [
         {"title": "A. Risk Score by Company", "graph": plot_html(fig1)},
         {"title": "B. Risk vs ESG Score", "graph": plot_html(fig2)},
         {"title": "C. Risk Categories", "graph": plot_html(fig3)},
+        {"title": "D. Emission Risk vs Profit Risk", "graph": plot_html(fig4)},
+        {"title": "E. Risk Score Spread by Category", "graph": plot_html(fig5)},
+        {"title": "F. Portfolio Risk Trend", "graph": plot_html(fig6)},
     ]
 
 
@@ -585,10 +1081,55 @@ def trend_time_dashboard(df):
         title="Growth Pattern",
     )
 
+    yearly_stats = (
+        trend_df.groupby("Year")["ESG_Overall"]
+        .agg(["mean", "max", "min"])
+        .reset_index()
+    )
+    yearly_stats.columns = ["Year", "Average ESG", "Best ESG", "Lowest ESG"]
+    spread_long = yearly_stats.melt(
+        id_vars="Year",
+        value_vars=["Average ESG", "Best ESG", "Lowest ESG"],
+        var_name="Metric",
+        value_name="Score",
+    )
+    fig4 = px.line(
+        spread_long,
+        x="Year",
+        y="Score",
+        color="Metric",
+        markers=True,
+        title="Average vs Best vs Lowest ESG Trend",
+    )
+
+    yoy = overall.copy()
+    yoy["YoY Change"] = yoy["ESG_Overall"].diff().fillna(0)
+    fig5 = px.bar(
+        yoy,
+        x="Year",
+        y="YoY Change",
+        color="YoY Change",
+        title="Year-over-Year ESG Change",
+    )
+
+    top_latest = latest_ranking.nlargest(12, "ESG_Overall")
+    fig6 = px.scatter(
+        top_latest,
+        x="Year",
+        y="ESG_Overall",
+        size="ESG_Overall",
+        color="CompanyName",
+        hover_name="CompanyName",
+        title="Top Performer Snapshot",
+    )
+
     return [
         {"title": "A. ESG Score Trend Over Time", "graph": plot_html(fig1)},
         {"title": "B. Company Comparison", "graph": plot_html(fig2)},
         {"title": "C. Growth Pattern", "graph": plot_html(fig3)},
+        {"title": "D. Average vs Best vs Lowest ESG Trend", "graph": plot_html(fig4)},
+        {"title": "E. Year-over-Year ESG Change", "graph": plot_html(fig5)},
+        {"title": "F. Top Performer Snapshot", "graph": plot_html(fig6)},
     ]
 
 
@@ -724,10 +1265,8 @@ def forgot_password():
 
 
 @app.route("/dashboard")
+@login_required
 def dashboard():
-    if not require_login():
-        return redirect(url_for("home", auth="login"))
-
     user = get_current_user()
     analytics_dashboards = [
         {"key": "performance", "label": "Overall ESG"},
@@ -758,10 +1297,8 @@ def dashboard():
 
 
 @app.route("/analytics/<dashboard_key>")
+@login_required
 def open_analytics_dashboard(dashboard_key):
-    if not require_login():
-        return redirect(url_for("home", auth="login"))
-
     user = get_current_user()
     config = DASHBOARD_BUILDERS.get(dashboard_key)
 
@@ -774,6 +1311,13 @@ def open_analytics_dashboard(dashboard_key):
     try:
         df = load_dataset()
         charts = builder(df)
+        kpi_payload = build_dashboard_kpis(dashboard_key, df)
+        for index, item in enumerate(charts):
+            item["kpis"] = (
+                kpi_payload["per_chart"][index]
+                if index < len(kpi_payload["per_chart"])
+                else []
+            )
     except Exception as error:
         flash(f"Dashboard load failed: {error}", "danger")
         return redirect(url_for("dashboard"))
@@ -783,6 +1327,7 @@ def open_analytics_dashboard(dashboard_key):
         user=user,
         dashboard_title=title,
         charts=charts,
+        summary_kpis=kpi_payload["summary"],
     )
 
 
@@ -917,12 +1462,16 @@ def Risk_Category_Distribution():
 
 #analysis graphs routes for risk and alert dashboard
 @app.route("/risk_alert_graphs")
+@login_required
 def risk_alert_graphs():
     graph1 = Risk_Score_by_Company()
     graph2 = Risk_vs_ESG()
     graph3 = Risk_Category_Distribution()
+    graph4 = Risk_Score_by_Company()
+    graph5 = Risk_vs_ESG()
+    graph6 = Risk_Category_Distribution()
 
-    return render_template("risk_alert.html", graph1=graph1, graph2=graph2, graph3=graph3)
+    return render_template("risk_alert.html", graph1=graph1, graph2=graph2, graph3=graph3, graph4=graph4, graph5=graph5, graph6=graph6)
 
 #graphs2 🔴 2. Emission Trend Over Time
 def Emission_Trend_Over_Time():
@@ -976,12 +1525,16 @@ def Emission_vs_ESG_Score():
 
 #analysis graphs routes for environmental dashboard
 @app.route("/environment_graphs")
+@login_required
 def environment_graphs():
     graph1 = Emission_Trend_Over_Time()
     graph2 = Company_wise_Emission_vs_Energy()
     graph3 = Emission_vs_ESG_Score()
+    graph4 = Emission_Trend_Over_Time()
+    graph5 = Company_wise_Emission_vs_Energy()
+    graph6 = Emission_vs_ESG_Score()
 
-    return render_template("environment.html", graph1=graph1, graph2=graph2, graph3=graph3)
+    return render_template("environment.html", graph1=graph1, graph2=graph2, graph3=graph3, graph4=graph4, graph5=graph5, graph6=graph6)
 
 #graphs3 Governance Analysis Page
 def Governance_Score_by_Company():
@@ -1050,12 +1603,16 @@ def Governance_Risk_Level_Distribution():
 
 #analysis graphs routes for governance dashboard
 @app.route("/governance_graphs")
+@login_required
 def governance_graphs():
     graph1 = Governance_Score_by_Company()
     graph2 = Compliance_Heatmap()
     graph3 = Governance_Risk_Level_Distribution()
+    graph4 = Governance_Score_by_Company()
+    graph5 = Compliance_Heatmap()
+    graph6 = Governance_Risk_Level_Distribution()
 
-    return render_template("governance.html", graph1=graph1, graph2=graph2, graph3=graph3)
+    return render_template("governance.html", graph1=graph1, graph2=graph2, graph3=graph3, graph4=graph4, graph5=graph5, graph6=graph6)
 
 #graphs4 Social Analysis Page
 def Customer_Satisfaction_and_Engagement():
@@ -1128,12 +1685,16 @@ def Diversity_and_Inclusion():
 
 #analysis graphs routes for social dashboard
 @app.route("/social_graphs")
+@login_required
 def social_graphs():
     graph1 = Customer_Satisfaction_and_Engagement()
     graph2 = Employee_Turnover_Distribution()
     graph3 = Diversity_and_Inclusion()
+    graph4 = Customer_Satisfaction_and_Engagement()
+    graph5 = Employee_Turnover_Distribution()
+    graph6 = Diversity_and_Inclusion()
 
-    return render_template("social.html", graph1=graph1, graph2=graph2, graph3=graph3)
+    return render_template("social.html", graph1=graph1, graph2=graph2, graph3=graph3, graph4=graph4, graph5=graph5, graph6=graph6)
 
 #graphs5 Trend & Time Analysis Page
 
@@ -1208,12 +1769,16 @@ def Growth_Pattern():
 
 #analysis graphs routes for trend and time dashboard
 @app.route("/trend_time_graphs")
+@login_required
 def trend_time_graphs():
     graph1 = Trend_of_ESG_Score_Over_Time()
     graph2 = Company_Comparison()
     graph3 = Growth_Pattern()
+    graph4 = Trend_of_ESG_Score_Over_Time()
+    graph5 = Company_Comparison()
+    graph6 = Growth_Pattern()
 
-    return render_template("trend_time.html", graph1=graph1, graph2=graph2, graph3=graph3)
+    return render_template("trend_time.html", graph1=graph1, graph2=graph2, graph3=graph3, graph4=graph4, graph5=graph5, graph6=graph6)
 
 #graphs6 Overall ESG Performance Page
 
@@ -1305,13 +1870,116 @@ def esg_category_distribution():
 
 #analysis graphs routes for overall esg performance dashboard
 @app.route("/overall_esg_graphs")
+@login_required
 def overall_esg_graphs():
     graph1 = KPI_Overview()
     graph2 = company_wise_esg_score()
     graph3 = esg_category_distribution()
+    graph4 = KPI_Overview()
+    graph5 = company_wise_esg_score()
+    graph6 = esg_category_distribution()
 
-    return render_template("esg_performance.html", graph1=graph1, graph2=graph2, graph3=graph3)
+    return render_template("esg_performance.html", graph1=graph1, graph2=graph2, graph3=graph3, graph4=graph4, graph5=graph5, graph6=graph6)
 
+# =========================================
+# ESG PREDICTION ROUTE
+# =========================================
+
+
+
+# =========================================
+# LOAD TRAINED MODELS
+# =========================================
+
+env_model = joblib.load('env_model.pkl')
+social_model = joblib.load('social_model.pkl')
+gov_model = joblib.load('gov_model.pkl')
+env_features = joblib.load('env_features.pkl')
+social_features = joblib.load('social_features.pkl')
+gov_features = joblib.load('gov_features.pkl')
+
+def prepare_features(new_company):
+    new_company['carbon_intensity'] = ( new_company['CarbonEmissions'] / new_company['Revenue'] )
+    new_company['water_intensity'] = ( new_company['WaterUsage'] / new_company['Revenue'] )
+    new_company['energy_intensity'] = ( new_company['EnergyConsumption'] / new_company['Revenue'] )
+    new_company['env_burden'] = ( new_company['carbon_intensity'] + new_company['water_intensity'] + new_company['energy_intensity'] )
+    new_company['log_revenue'] = np.log1p( new_company['Revenue'] )
+    new_company['log_marketcap'] = np.log1p( new_company['MarketCap'] )
+    new_company['log_carbon'] = np.log1p( new_company['CarbonEmissions'] )
+    new_company['log_water'] = np.log1p( new_company['WaterUsage'] )
+    new_company['log_energy'] = np.log1p( new_company['EnergyConsumption'] )
+    X_env = new_company.reindex( columns=env_features, fill_value=0 )
+    X_social = new_company.reindex( columns=social_features, fill_value=0 )
+    X_gov = new_company.reindex( columns=gov_features, fill_value=0 )
+    return X_env, X_social, X_gov
+@app.route('/predict_esg', methods=['GET', 'POST']) 
+@login_required
+def predict_esg():
+    prediction = None
+    category = None
+    if request.method == 'POST':
+        try:
+            revenue = float(request.form['Revenue'])
+            profit_margin = float(request.form['ProfitMargin'])
+            market_cap = float(request.form['MarketCap'])
+            growth_rate = float(request.form['GrowthRate'])
+            carbon = float(request.form['CarbonEmissions'])
+            water = float(request.form['WaterUsage'])
+            energy = float(request.form['EnergyConsumption'])
+            industry_enc = int(request.form['industry_enc'])
+            region_enc = int(request.form['region_enc'])
+            year_norm = float(request.form['year_norm'])
+            
+            new_company = pd.DataFrame({
+                'Revenue': [revenue],
+                'ProfitMargin': [profit_margin],
+                'MarketCap': [market_cap],
+                'GrowthRate': [growth_rate],
+                'CarbonEmissions': [carbon],
+                'WaterUsage': [water],
+                'EnergyConsumption': [energy],
+                'industry_enc': [industry_enc],
+                'region_enc': [region_enc],
+                'year_norm': [year_norm]
+            })
+            
+            X_env, X_social, X_gov = prepare_features(new_company)
+            
+            env_score = env_model.predict(X_env)[0]
+            social_score = social_model.predict(X_social)[0]
+            gov_score = gov_model.predict(X_gov)[0]
+            
+            overall_esg = (0.4 * env_score + 0.3 * social_score + 0.3 * gov_score)
+            
+            if overall_esg >= 85:
+                category = "AAA"
+            elif overall_esg >= 75:
+                category = "AA"
+            elif overall_esg >= 65:
+                category = "A"
+            elif overall_esg >= 50:
+                category = "BBB"
+            elif overall_esg >= 35:
+                category = "BB"
+            else:
+                category = "B"
+                
+            prediction = {
+                "Environmental": round(env_score, 2),
+                "Social": round(social_score, 2),
+                "Governance": round(gov_score, 2),
+                "Overall": round(overall_esg, 2)
+            }
+            
+        except Exception as e:
+            prediction = {"error": str(e)}
+            
+    return render_template(
+        'predict_esg.html',
+        prediction=prediction,
+        category=category,
+        user=get_current_user()
+    )
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)

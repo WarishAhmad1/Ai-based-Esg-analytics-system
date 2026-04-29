@@ -3,11 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>ESG Analytics Graphs</title>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root{--bg:#f4f7fb;--surface:#fff;--soft:#eef8f5;--text:#213534;--muted:#5f7a75;--accent:#0f766e;--line:rgba(15,118,110,.14);--shadow:0 18px 40px rgba(15,23,42,.08)}
+        *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif}
+        body{background:linear-gradient(180deg,#f4f7fb 0%,#eef8f5 100%);color:var(--text)}
+        .page{width:min(1240px,calc(100% - 32px));margin:0 auto;padding:24px 0 32px}
+        .top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
+        h1{font-size:30px;color:var(--accent)}
+        .sub{color:var(--muted);line-height:1.7}
+        .btn{display:inline-flex;text-decoration:none;padding:10px 14px;border-radius:999px;background:#fff;border:1px solid var(--line);color:var(--accent)}
+        .grid{display:grid;gap:16px}
+        .card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:var(--shadow)}
+        .card h3{margin-bottom:10px;color:#0b3f39}
+        .chart{background:#fff;border:1px solid var(--line);border-radius:16px;padding:8px;overflow-x:auto}
+        @media (max-width:800px){.top{flex-direction:column;align-items:flex-start}}
+    </style>
 </head>
 <body>
-    graph1: {{ graph1|safe }}
-    graph2: {{ graph2|safe }}
-    graph3: {{ graph3|safe }}
+    <div class="page">
+        <div class="top">
+            <div>
+                <h1>ESG Analytics Graphs</h1>
+                <p class="sub">All visualizations are displayed with a consistent dashboard theme.</p>
+            </div>
+            <a class="btn" href="{{ url_for('dashboard') }}">Back to Main Dashboard</a>
+        </div>
+
+        <section class="grid">
+            <article class="card">
+                <h3>Graph 1</h3>
+                <div class="chart">{{ graph1|safe }}</div>
+            </article>
+            <article class="card">
+                <h3>Graph 2</h3>
+                <div class="chart">{{ graph2|safe }}</div>
+            </article>
+            <article class="card">
+                <h3>Graph 3</h3>
+                <div class="chart">{{ graph3|safe }}</div>
+            </article>
+            <article class="card">
+                <h3>Graph 4</h3>
+                <div class="chart">{{ graph4|safe }}</div>
+            </article>
+            <article class="card">
+                <h3>Graph 5</h3>
+                <div class="chart">{{ graph5|safe }}</div>
+            </article>
+            <article class="card">
+                <h3>Graph 6</h3>
+                <div class="chart">{{ graph6|safe }}</div>
+            </article>
+        </section>
+    </div>
+
+    <script>
+        function applyDashboardThemeToPlots() {
+            if (!window.Plotly) return;
+            const themedLayout = {
+                paper_bgcolor: "#ffffff",
+                plot_bgcolor: "#f8fbfa",
+                font: { color: "#213534", family: "Poppins, sans-serif" },
+                colorway: ["#0f766e", "#14b8a6", "#22c55e", "#0891b2", "#f59e0b", "#ef4444"],
+                legend: {
+                    bgcolor: "rgba(255,255,255,0.88)",
+                    bordercolor: "rgba(15,118,110,0.14)",
+                    borderwidth: 1,
+                    font: { color: "#1f3f39" }
+                },
+                xaxis: {
+                    gridcolor: "rgba(15,118,110,0.12)",
+                    zerolinecolor: "rgba(15,118,110,0.12)",
+                    linecolor: "rgba(15,118,110,0.18)",
+                    tickfont: { color: "#365a55" },
+                    title: { font: { color: "#1f3f39" } }
+                },
+                yaxis: {
+                    gridcolor: "rgba(15,118,110,0.12)",
+                    zerolinecolor: "rgba(15,118,110,0.12)",
+                    linecolor: "rgba(15,118,110,0.18)",
+                    tickfont: { color: "#365a55" },
+                    title: { font: { color: "#1f3f39" } }
+                }
+            };
+
+            document.querySelectorAll(".plotly-graph-div").forEach((plot) => {
+                window.Plotly.relayout(plot, themedLayout);
+            });
+        }
+
+        setTimeout(applyDashboardThemeToPlots, 0);
+        window.addEventListener("load", applyDashboardThemeToPlots);
+    </script>
 </body>
 </html>
