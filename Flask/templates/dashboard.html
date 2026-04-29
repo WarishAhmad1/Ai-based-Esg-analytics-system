@@ -95,6 +95,10 @@
     .advanced-desc{font-size:12px;line-height:1.35;opacity:.95;max-width:260px}
     .advanced-cta{font-size:11px;font-weight:600;opacity:.92}
     .dash-footer{margin-top:24px;padding:18px 20px;border-radius:18px;background:#fff;border:1px solid var(--line);color:var(--muted);text-align:center}
+    .overview-card{margin-bottom:18px}
+    .overview-steps{margin-top:14px;display:grid;gap:10px}
+    .overview-step{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:var(--soft);border:1px solid rgba(15,118,110,.08);color:var(--muted);line-height:1.65}
+    .step-no{display:grid;place-items:center;min-width:26px;height:26px;border-radius:999px;background:rgba(20,184,166,.15);color:var(--accent);font-size:13px;font-weight:700}
     @media (max-width:720px){header{flex-direction:column;align-items:stretch}}
   </style>
 </head>
@@ -146,6 +150,17 @@
       </div>
     </header>
 
+    <div class="card overview-card">
+      <h3>Steps: How to Upload Your ESG Data</h3>
+      <p class="sub">Start here before using calculators and analytics dashboards.</p>
+      <div class="overview-steps">
+        <div class="overview-step"><span class="step-no">1</span><div>Prepare your file in <strong>CSV</strong> or spreadsheet format and keep ESG columns clean (Environmental, Social, Governance values).</div></div>
+        <div class="overview-step"><span class="step-no">2</span><div>Scroll to the <strong>Upload ESG Data</strong> section and click on <strong>Click here to choose a CSV or spreadsheet file</strong>.</div></div>
+        <div class="overview-step"><span class="step-no">3</span><div>Select your file from system storage and verify the file name, size, and type shown below the upload box.</div></div>
+        <div class="overview-step"><span class="step-no">4</span><div>Click <strong>Process File</strong> to confirm upload and continue with score calculation, comparison, and advanced ESG dashboards.</div></div>
+      </div>
+    </div>
+
     <div class="card top-card">
       <h3>Open Advanced Dashboards</h3>
       <p class="sub">Launch the detailed ESG analytics views directly from this main dashboard.</p>
@@ -180,18 +195,6 @@
         {% endfor %}
       </div>
     </div>
-    <section class="hero">
-      <div class="panel">
-        <h2>Track ESG health with a clearer and more professional dashboard.</h2>
-        <p>Use the calculator, comparison tools, and upload section below to analyze ESG performance with simpler visuals.</p>
-        <div class="hero-metrics">
-          <div class="metric"><span>Environment</span><strong>{{ esg_snapshot.environment }}</strong></div>
-          <div class="metric"><span>Social</span><strong>{{ esg_snapshot.social }}</strong></div>
-          <div class="metric"><span>Governance</span><strong>{{ esg_snapshot.governance }}</strong></div>
-        </div>
-      </div>
-    </section>
-
     <section class="grid">
       <div class="card span-12">
         <h3>Calculate ESG Score</h3>
